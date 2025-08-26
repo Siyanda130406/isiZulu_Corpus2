@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <title>IsiZulu-English Cultural Corpus</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary-color: #2267e6;
+      --secondary-color: #000ed3;
+      --accent-color: #12a1f3;
+      --text-dark: #2c3e50;
+      --text-light: #ecf0f1;
+      --shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+      --shadow-hover: 0 8px 15px rgba(0, 0, 0, 0.3);
+      --font-size-base: 1rem;
+      --font-size-lg: 1.1rem;
+      --font-size-xl: 1.25rem;
+      --font-size-2xl: 1.5rem;
+      --font-size-3xl: 2rem;
+      --font-size-4xl: 2.8rem;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body { 
+      height: 100%; 
+      font-size: 16px;
+    }
+    
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: url("/static/bg1.jpg") no-repeat center center fixed;
+      background-size: cover;
+      color: var(--text-light);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      position: relative;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    .overlay { 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      right: 0; 
+      bottom: 0;
+      background-color: rgba(0,0,0,0.5); 
+      z-index:0; 
+    }
+    
+    .container { 
+      position: relative; 
+      z-index:1; 
+      width:92%; 
+      max-width:900px; 
+      margin:0 auto; 
+      padding:20px 15px;
+      display:flex; 
+      flex-direction:column; 
+      min-height:100vh; 
+    }
+
+    .header-block { 
+      text-align:center; 
+      margin-top:4vh; 
+      margin-bottom:20px; 
+    }
+    
+    .logo { 
+      font-size: var(--font-size-4xl);
+      font-weight:bold; 
+      color:var(--primary-color); 
+      text-shadow:2px 2px 4px rgba(0,0,0,0.5); 
+      margin-bottom:8px; 
+      line-height: 1.2;
+    }
+    
+    .tagline { 
+      font-size: var(--font-size-lg);
+      color:var(--text-light); 
+      text-shadow:1px 1px 3px rgba(0,0,0,0.5); 
+      margin-bottom:20px; 
+      line-height: 1.4;
+    }
+
+    .search-card {
+      background: rgba(255,255,255,0.15);
+      border-radius:14px;
+      box-shadow: var(--shadow);
+      padding:14px;
+      backdrop-filter: blur(2px);
+    }
+
+    .search-container { 
+      display:flex; 
+      width:100%; 
+      margin-bottom: 10px;
+    }
+    
+  .search-bar {
+  flex:1;
+  padding:14px 18px;
+  border-radius:50px 0 0 50px;
+  border:none;
+  background: rgba(255,255,255,0.9);
+  font-size:var(--font-size-base);
+  outline:none;
+  color: var(--text-dark);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  min-width: 0;
+}
+    
+    .search-button {
+      background-color: var(--primary-color);
+      border:none;
+      color:white;
+      padding:14px 18px;
+      border-radius:0 50px 50px 0;
+      cursor:pointer;
+      font-size:var(--font-size-base);
+      display:flex;
+      align-items:center;
+      gap:6px;
+      box-shadow: var(--shadow);
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+    
+    .search-button:hover,
+    .search-button:focus { 
+      background-color: var(--secondary-color); 
+      transform:translateY(-2px); 
+      box-shadow: var(--shadow-hover); 
+    }
+
+    .search-tips {
+      margin-top: 15px;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+    
+    .search-tips summary {
+      cursor: pointer;
+      font-weight: bold;
+      margin-bottom: 5px;
+      padding: 5px 0;
+      outline: none;
+    }
+    
+    .search-tips ul {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+    
+    .search-tips li {
+      margin-bottom: 5px;
+      line-height: 1.4;
+    }
+    
+    .search-tips code {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: inline-block;
+      margin: 2px 0;
+    }
+    
+    .search-tips code:hover,
+    .search-tips code:focus {
+      background: rgba(0, 0, 0, 0.6);
+    }
+
+    .category-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+      justify-content: center;
+    }
+    
+    .category-badge {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      color: inherit;
+    }
+    
+    .category-badge:hover,
+    .category-badge:focus {
+      background: var(--accent-color);
+      transform: translateY(-2px);
+      outline: none;
+    }
+
+    .results-wrap { 
+      margin-top:20px; 
+      margin-bottom:20px; 
+    }
+    
+    .results-title { 
+      margin:0 0 12px 4px; 
+      font-weight:600; 
+      text-shadow:1px 1px 3px rgba(0,0,0,0.5); 
+      font-size: var(--font-size-2xl);
+      line-height: 1.3;
+    }
+    
+    .results-info {
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+      opacity: 0.8;
+      line-height: 1.4;
+    }
+    
+    .results { 
+      display:grid; 
+      grid-template-columns:1fr; 
+      gap:12px; 
+    }
+
+    .result {
+      background: rgba(255,255,255,0.12);
+      border:1px solid rgba(255,255,255,0.25);
+      border-radius:12px;
+      padding:14px;
+      box-shadow: var(--shadow);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .result:hover,
+    .result:focus { 
+      background: rgba(255,255,255,0.18); 
+      transform:translateY(-2px); 
+      box-shadow: var(--shadow-hover); 
+      outline: none;
+    }
+
+    .result h3 { 
+      margin:0 0 8px 0; 
+      color:#fff; 
+      font-size: var(--font-size-xl);
+      line-height: 1.3;
+    }
+    
+    .result h3 a { 
+      color:#fff; 
+      text-decoration:none; 
+    }
+    
+    .result h3 a:hover,
+    .result h3 a:focus { 
+      text-decoration:underline; 
+    }
+    
+    .result p { 
+      margin:0; 
+      color:#e9eef3; 
+      line-height:1.5; 
+      font-size: var(--font-size-base);
+    }
+    
+    .category-label { 
+      font-size:0.85rem; 
+      font-style:italic; 
+      color:#f5b041; 
+      margin-top:6px; 
+    }
+
+    .no-results { 
+      text-align:center; 
+      opacity:0.9; 
+      padding: 25px 15px;
+    }
+    
+    .no-results i {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      opacity: 0.7;
+    }
+
+    .query-info {
+      margin: 18px 0 10px 0;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+    
+    .category-search-header {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 14px;
+      border-radius: 10px;
+      margin-bottom: 18px;
+      text-align: center;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 20px;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+    
+    .pagination form {
+      display: inline;
+    }
+    
+    .pagination button {
+      padding: 8px 14px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.9rem;
+      min-width: 44px;
+      min-height: 44px;
+    }
+    
+    .pagination button:hover:not(:disabled),
+    .pagination button:focus:not(:disabled) {
+      background: rgba(255,255,255,0.2);
+      outline: none;
+    }
+    
+    .pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .pagination .page-info {
+      padding: 8px 12px;
+      margin: 0 5px;
+      font-size: 0.9rem;
+    }
+
+    .bottom-meta { 
+      margin-top:auto; 
+      text-align:center; 
+      padding-top: 20px;
+    }
+    
+    .language-toggle { 
+      font-size:0.9rem; 
+      margin-bottom:10px; 
+    }
+    
+    .language-toggle a { 
+      color:var(--accent-color); 
+      text-decoration:none; 
+      font-weight:bold; 
+      padding: 5px;
+    }
+
+    footer { 
+      font-size:0.8rem; 
+      color:var(--text-light); 
+      opacity:0.9; 
+      padding: 10px 0;
+    }
+
+    /* Mobile-first responsive design */
+    @media (max-width: 768px) {
+      :root {
+        --font-size-base: 0.95rem;
+        --font-size-lg: 1rem;
+        --font-size-xl: 1.15rem;
+        --font-size-2xl: 1.3rem;
+        --font-size-3xl: 1.6rem;
+        --font-size-4xl: 2rem;
+      }
+      
+      .container {
+        width: 95%;
+        padding: 15px 10px;
+      }
+      
+      .header-block {
+        margin-top: 3vh;
+      }
+      
+      .search-container {
+        flex-direction: column;
+      }
+      
+      .search-bar {
+        border-radius: 50px;
+        width: 100%;
+        padding: 16px 20px;
+        font-size: var(--font-size-base);
+      }
+      
+      .search-button {
+        border-radius: 50px;
+        width: 100%;
+        margin-top: 10px;
+        justify-content: center;
+        padding: 16px 20px;
+      }
+      
+      .category-badges {
+        justify-content: center;
+        gap: 5px;
+      }
+      
+      .category-badge {
+        padding: 6px 12px;
+        font-size: 0.75rem;
+      }
+      
+      .result {
+        padding: 12px;
+      }
+      
+      .pagination {
+        gap: 3px;
+      }
+      
+      .pagination button {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      :root {
+        --font-size-4xl: 1.8rem;
+      }
+      
+      .logo {
+        font-size: var(--font-size-4xl);
+      }
+      
+      .search-tips {
+        font-size: 0.85rem;
+      }
+      
+      .search-tips ul {
+        padding-left: 15px;
+      }
+      
+      .pagination {
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .pagination .page-info {
+        margin: 5px 0;
+      }
+    }
+
+    /* Tablet specific adjustments */
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .container {
+        width: 90%;
+        max-width: 800px;
+      }
+      
+      .logo {
+        font-size: 2.4rem;
+      }
+    }
+
+    /* Touch device improvements */
+    @media (hover: none) and (pointer: coarse) {
+      .result:hover {
+        transform: none;
+        background: rgba(255,255,255,0.12);
+      }
+      
+      .category-badge:hover {
+        transform: none;
+        background: rgba(255, 255, 255, 0.2);
+      }
+      
+      .search-button:hover {
+        transform: none;
+        background-color: var(--primary-color);
+      }
+    }
+
+    /* High contrast mode support */
+    @media (prefers-contrast: high) {
+      .search-card {
+        background: rgba(0, 0, 0, 0.7);
+      }
+      
+      .result {
+        background: rgba(0, 0, 0, 0.6);
+        border: 2px solid white;
+      }
+    }
+
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        transition: none !important;
+        transform: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay"></div>
+  <div class="container">
+    <div class="header-block">
+      <div class="logo">IsiZulu-English Corpus</div>
+      <div class="tagline">Umsuka wolwazi lwesiZulu | The Source of IsiZulu Knowledge</div>
+    </div>
+
+    <div class="search-card">
+      <form action="/search" method="POST" class="search-container">
+        <input type="text" name="query" class="search-bar" placeholder="Sesha izaga, izibongo, izisho..." value="{{ query or '' }}" required aria-label="Search input" />
+        <input type="hidden" name="page" value="1">
+        <button type="submit" class="search-button" aria-label="Search">
+          <i class="fas fa-search" aria-hidden="true"></i> Sesha ku-Corpus
+        </button>
+      </form>
+      
+      <div class="search-tips">
+        <details>
+          <summary>Search Tips</summary>
+          <ul>
+            <li>Search for specific categories: <code>izaga</code>, <code>izibongo</code>, <code>izisho</code></li>
+            <li>Use quotes for exact phrases: <code>"ubuntu botho"</code></li>
+            <li>Search specific fields: <code>title:"izibongo"</code> or <code>category:history</code></li>
+            <li>The search automatically handles spelling variations and similar words</li>
+          </ul>
+        </details>
+        
+        <div class="category-badges">
+          <button class="category-badge" onclick="searchCategory('izaga')" aria-label="Search Izaga">Izaga</button>
+          <button class="category-badge" onclick="searchCategory('izibongo')" aria-label="Search Izibongo">Izibongo</button>
+          <button class="category-badge" onclick="searchCategory('izisho')" aria-label="Search Izisho">Izisho</button>
+          <button class="category-badge" onclick="searchCategory('philosophy')" aria-label="Search Philosophy">Philosophy</button>
+          <button class="category-badge" onclick="searchCategory('folktale')" aria-label="Search Folktales">Folktales</button>
+          <button class="category-badge" onclick="searchCategory('history')" aria-label="Search History">History</button>
+        </div>
+      </div>
+    </div>
+
+    {% if query %}
+      <div class="results-wrap">
+        {% if is_category_search %}
+        <div class="category-search-header">
+          <h2 class="results-title">All {{ query|title }} Content</h2>
+          <p>Showing all items in the {{ query }} category</p>
+        </div>
+        {% else %}
+        <h2 class="results-title">Results for "{{ query }}"</h2>
+        {% endif %}
+
+        <div class="results-info">
+          Showing {{ results|length }} of {{ total_results }} results 
+          {% if total_pages > 1 %}
+          (Page {{ current_page }} of {{ total_pages }})
+          {% endif %}
+        </div>
+
+        {% if results and results|length > 0 %}
+          <div class="results">
+            {% for result in results %}
+              <div class="result" onclick="window.location.href='/detail/{{ result[0] }}'" onkeypress="if(event.key === 'Enter') window.location.href='/detail/{{ result[0] }}'" tabindex="0" role="button" aria-label="View {{ result[1] }}">
+                <h3><a href="/detail/{{ result[0] }}">{{ result[1] }}</a></h3>
+                <p>{{ result[2] }}</p>
+                <p class="category-label">Category: {{ result[3] }}</p>
+              </div>
+            {% endfor %}
+          </div>
+          
+          {% if total_pages > 1 %}
+          <div class="pagination">
+            <form action="/search" method="POST">
+              <input type="hidden" name="query" value="{{ query }}">
+              <input type="hidden" name="page" value="{{ current_page - 1 }}">
+              <button type="submit" {{ 'disabled' if current_page == 1 else '' }} aria-label="Previous page">
+                <i class="fas fa-chevron-left" aria-hidden="true"></i> Previous
+              </button>
+            </form>
+            
+            <span class="page-info">Page {{ current_page }} of {{ total_pages }}</span>
+            
+            <form action="/search" method="POST">
+              <input type="hidden" name="query" value="{{ query }}">
+              <input type="hidden" name="page" value="{{ current_page + 1 }}">
+              <button type="submit" {{ 'disabled' if current_page >= total_pages else '' }} aria-label="Next page">
+                Next <i class="fas fa-chevron-right" aria-hidden="true"></i>
+              </button>
+            </form>
+          </div>
+          {% endif %}
+        {% else %}
+          <div class="no-results">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <h3>No results found</h3>
+            <p>Try different keywords or check the search tips above.</p>
+          </div>
+        {% endif %}
+        
+        {% if parsed_query %}
+        <div class="query-info">
+          <small>
+            <i class="fas fa-info-circle" aria-hidden="true"></i> Search details: 
+            {% if parsed_query.terms %}Keywords: <strong>{{ parsed_query.terms|join(', ') }}</strong>{% endif %}
+            {% if parsed_query.phrases %} | Phrases: <strong>{{ parsed_query.phrases|join(', ') }}</strong>{% endif %}
+            {% if parsed_query.filters %} | Filters: <strong>{% for k,v in parsed_query.filters.items() %}{{ k }}:{{ v }} {% endfor %}</strong>{% endif %}
+            {% if parsed_query.category_search %} | Category: <strong>{{ parsed_query.category_search }}</strong>{% endif %}
+          </small>
+        </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <div class="bottom-meta">
+      <div class="language-toggle">
+        Search in: <a href="#" id="toggleLanguage" role="button">English</a>
+      </div>
+      <footer>© 2025 IsiZulu-English Cultural Corpus | Ulwazi lwethu, amagugu ethu</footer>
+    </div>
+  </div>
+
+  <div style="position:absolute; top:15px; left:15px; z-index:2;">
+    <a href="/" style="background-color: rgba(255,255,255,0.8); color:#000; padding:8px 14px; border-radius:6px; font-size:0.95rem; text-decoration:none; box-shadow:0 2px 5px rgba(0,0,0,0.3); transition:background 0.3s;" onmouseover="this.style.backgroundColor='rgba(255,255,255,1)'" onmouseout="this.style.backgroundColor='rgba(255,255,255,0.8)'">
+      ← Back to Menu
+    </a>
+  </div>
+
+  <script>
+    const searchInput = document.querySelector('input[name="query"]');
+    const toggleLanguage = document.getElementById('toggleLanguage');
+    let currentLanguage = 'zulu';
+
+    toggleLanguage.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (currentLanguage === 'zulu') {
+        searchInput.placeholder = "Search for proverbs, praise poetry, idioms...";
+        toggleLanguage.textContent = "isiZulu";
+        currentLanguage = 'english';
+      } else {
+        searchInput.placeholder = "Sesha izaga, izibongo, izisho...";
+        toggleLanguage.textContent = "English";
+        currentLanguage = 'zulu';
+      }
+    });
+    
+    // Add example searches when clicking on search tips
+    document.querySelectorAll('.search-tips code').forEach(element => {
+      element.addEventListener('click', function() {
+        searchInput.value = this.textContent;
+        searchInput.focus();
+      });
+      
+      // Make code elements keyboard accessible
+      element.setAttribute('tabindex', '0');
+      element.setAttribute('role', 'button');
+      element.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          searchInput.value = this.textContent;
+          searchInput.focus();
+          e.preventDefault();
+        }
+      });
+    });
+    
+    // Function to search by category
+    function searchCategory(category) {
+      const form = document.querySelector('form');
+      form.querySelector('input[name="query"]').value = category;
+      form.querySelector('input[name="page"]').value = 1;
+      form.submit();
+    }
+    
+    // Make category badges keyboard accessible
+    document.querySelectorAll('.category-badge').forEach(badge => {
+      badge.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          searchCategory(this.textContent.toLowerCase());
+          e.preventDefault();
+        }
+      });
+    });
+    
+    // Make result items keyboard accessible
+    document.querySelectorAll('.result').forEach(result => {
+      result.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          const link = this.querySelector('a');
+          if (link) {
+            window.location.href = link.href;
+          }
+          e.preventDefault();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
