@@ -4,6 +4,7 @@ import sqlite3
 import shutil
 import re
 from flask import Flask, render_template, request, redirect, url_for, abort
+from Levenshtein import distance as levenshtein_distance
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.environ.get('DB_PATH', os.path.join(BASE_DIR, 'corpus.db'))
@@ -25,6 +26,7 @@ def get_db_connection():
     return conn
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 
 # basic category list your template uses
 CATEGORY_SET = {'izaga', 'izibongo', 'izisho', 'philosophy', 'folktale', 'history'}
@@ -95,12 +97,12 @@ def search():
 
                 where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
                 # count total
-                count_sql = f"SELECT COUNT(1) FROM documents {where_sql}"
+                count_sql = f"SELECT COUNT(1) FROM texts {where_sql}"
                 cur = conn.execute(count_sql, params)
                 total_results = cur.fetchone()[0] or 0
                 total_pages = (total_results + per_page - 1) // per_page if total_results else 1
                 offset = (current_page - 1) * per_page
-                sql = f"SELECT id, title, content, category FROM documents {where_sql} ORDER BY id DESC LIMIT ? OFFSET ?"
+                sql = f"SELECT id, title, content, category FROM texts {where_sql} ORDER BY id DESC LIMIT ? OFFSET ?"
                 cur = conn.execute(sql, params + [per_page, offset])
                 rows = cur.fetchall()
                 for r in rows:
@@ -127,17 +129,40 @@ def search():
 def detail(item_id):
     conn = get_db_connection()
     try:
-        cur = conn.execute("SELECT id, title, content, category FROM documents WHERE id = ?", (item_id,))
+        cur = conn.execute("SELECT id, title, content, full_content, category, date_added FROM texts WHERE id = ?", (item_id,))
         row = cur.fetchone()
         if not row:
             return ("Not found", 404)
-        item = {'id': row['id'], 'title': row['title'], 'content': row['content'], 'category': row['category']}
+        
+        # Prepare the item data for the template
+        item = {
+            'id': row['id'], 
+            'title': row['title'], 
+            'content': row['content'],
+            'full_content': row['full_content'] or row['content'],
+            'category': row['category'],
+            'date_added': row['date_added']
+        }
+        
         if os.path.exists(os.path.join(BASE_DIR, 'templates', 'detail.html')):
-            return render_template('detail.html', item=item)
+            return render_template('detail.html', text=item)
         # fallback simple page if template missing
-        return f"<h1>{item['title']}</h1><p>{item['content']}</p><p><strong>Category:</strong> {item['category']}</p>"
+        return f"<h1>{item['title']}</h1><p>{item['full_content']}</p><p><strong>Category:</strong> {item['category']}</p>"
+    except Exception as e:
+        print("Error in detail view:", e)
+        return ("Error loading content", 500)
     finally:
         conn.close()
 
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('error.html', error_message='Page not found'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return render_template('error.html', error_message='Internal server error'), 500
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('DEBUG', 'False').lower() == 'true'
+    app.run(host='0.0.0.0', port=port, debug=debug)
