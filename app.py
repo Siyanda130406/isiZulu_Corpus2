@@ -4,7 +4,6 @@ import sqlite3
 import shutil
 import re
 from flask import Flask, render_template, request, redirect, url_for, abort
-from Levenshtein import distance as levenshtein_distance
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.environ.get('DB_PATH', os.path.join(BASE_DIR, 'corpus.db'))
