@@ -133,20 +133,20 @@ def detail(item_id):
         if not row:
             return ("Not found", 404)
         
-        # Prepare the item data for the template
-        item = {
-            'id': row['id'], 
-            'title': row['title'], 
-            'content': row['content'],
-            'full_content': row['full_content'] or row['content'],
-            'category': row['category'],
-            'date_added': row['date_added']
-        }
+        # Prepare the data in the format your template expects - as a tuple
+        text = (
+            row['id'],           # text[0] - ID (not used in template)
+            row['title'],        # text[1] - Title
+            row['content'],      # text[2] - Summary/Short content
+            row['full_content'] or row['content'],  # text[3] - Full content
+            row['category'],     # text[4] - Category
+            row['date_added']    # text[5] - Date added
+        )
         
         if os.path.exists(os.path.join(BASE_DIR, 'templates', 'detail.html')):
-            return render_template('detail.html', text=item)
+            return render_template('detail.html', text=text)
         # fallback simple page if template missing
-        return f"<h1>{item['title']}</h1><p>{item['full_content']}</p><p><strong>Category:</strong> {item['category']}</p>"
+        return f"<h1>{text[1]}</h1><p>{text[3]}</p><p><strong>Category:</strong> {text[4]}</p>"
     except Exception as e:
         print("Error in detail view:", e)
         return ("Error loading content", 500)
