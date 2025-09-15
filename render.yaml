@@ -7,4 +7,12 @@ services:
     startCommand: gunicorn app:app
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.9.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromService:
+          name: isizulu-corpus-db
+          type: postgresql
+          property: connectionString
+    healthCheckPath: /

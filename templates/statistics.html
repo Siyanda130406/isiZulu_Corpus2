@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <title>Statistics - IsiZulu-English Cultural Corpus</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary-color: #007749; /* South African green */
+      --secondary-color: #000066; /* South African blue */
+      --accent-color: #FFB81C; /* South African gold */
+      --red-color: #E03C31; /* South African red */
+      --black-color: #000000; /* South African black */
+      --white-color: #FFFFFF; /* South African white */
+      --text-light: #ecf0f1;
+      --shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+      --shadow-hover: 0 8px 15px rgba(0, 0, 0, 0.3);
+      --font-size-base: 1rem;
+      --font-size-lg: 1.1rem;
+      --font-size-xl: 1.25rem;
+      --font-size-2xl: 1.5rem;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: url("/static/bg1.jpg") no-repeat center center fixed;
+      background-size: cover;
+      color: var(--text-light);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 92%;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px 15px;
+      flex: 1;
+    }
+
+    .header-block {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+    
+    .logo {
+      font-size: var(--font-size-2xl);
+      font-weight: bold;
+      color: var(--accent-color);
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+      margin-bottom: 8px;
+      line-height: 1.2;
+    }
+    
+    .tagline {
+      font-size: var(--font-size-base);
+      color: var(--text-light);
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+
+    /* Navigation Links */
+    .nav-links {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+    }
+    
+    .nav-link {
+      color: var(--accent-color);
+      text-decoration: none;
+      padding: 10px 20px;
+      border: 1px solid var(--accent-color);
+      border-radius: 25px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .nav-link:hover,
+    .nav-link:focus {
+      background-color: var(--accent-color);
+      color: var(--black-color);
+      outline: none;
+    }
+
+    .stats-card {
+      background: rgba(0, 119, 73, 0.3);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 25px;
+      backdrop-filter: blur(2px);
+      margin-bottom: 25px;
+      border: 1px solid var(--accent-color);
+    }
+    
+    .stats-title {
+      font-size: var(--font-size-xl);
+      margin-bottom: 20px;
+      color: var(--accent-color);
+      text-align: center;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    
+    .stat-item {
+      background: rgba(255, 184, 28, 0.1);
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      border: 1px solid var(--accent-color);
+    }
+    
+    .stat-number {
+      font-size: var(--font-size-2xl);
+      font-weight: bold;
+      color: var(--accent-color);
+      margin-bottom: 5px;
+    }
+    
+    .stat-label {
+      font-size: var(--font-size-base);
+      opacity: 0.9;
+    }
+    
+    .stats-section {
+      margin-bottom: 30px;
+    }
+    
+    .stats-section-title {
+      font-size: var(--font-size-lg);
+      color: var(--accent-color);
+      margin-bottom: 15px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--accent-color);
+    }
+    
+    .language-tabs {
+      display: flex;
+      margin-bottom: 15px;
+      border-bottom: 1px solid var(--accent-color);
+    }
+    
+    .language-tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      background: rgba(255, 184, 28, 0.1);
+      border: 1px solid transparent;
+      border-bottom: none;
+      margin-right: 5px;
+      border-radius: 5px 5px 0 0;
+    }
+    
+    .language-tab.active {
+      background: rgba(255, 184, 28, 0.3);
+      border-color: var(--accent-color);
+      border-bottom-color: transparent;
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    .word-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    
+    .word-item {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .word-text {
+      font-weight: bold;
+      color: var(--accent-color);
+      margin-bottom: 5px;
+    }
+    
+    .word-count {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+    
+    .word-pair-item {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    
+    .word-pair-text {
+      font-weight: bold;
+      color: var(--accent-color);
+      margin-bottom: 5px;
+    }
+    
+    .no-data {
+      text-align: center;
+      padding: 30px;
+      color: #ccc;
+      font-style: italic;
+    }
+    
+    .last-updated {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #ccc;
+      margin-top: 20px;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      padding: 20px 0;
+      color: var(--text-light);
+      opacity: 0.8;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        width: 95%;
+        padding: 15px 10px;
+      }
+      
+      .nav-links {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .nav-link {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+      }
+      
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .word-list {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .language-tabs {
+        flex-direction: column;
+      }
+      
+      .language-tab {
+        margin-right: 0;
+        margin-bottom: 5px;
+        border-radius: 5px;
+        border: 1px solid var(--accent-color);
+      }
+      
+      .language-tab.active {
+        border-radius: 5px;
+        border-bottom: 1px solid var(--accent-color);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .word-list {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay"></div>
+  
+  <div class="container">
+    <div class="header-block">
+      <div class="logo">IsiZulu-English Corpus</div>
+      <div class="tagline">Corpus Statistics and Analytics</div>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="nav-links">
+      <a href="{{ url_for('home') }}" class="nav-link">
+        <i class="fas fa-home"></i> Home
+      </a>
+      <a href="{{ url_for('search') }}" class="nav-link">
+        <i class="fas fa-search"></i> Search Corpus
+      </a>
+      <a href="{{ url_for('contribute') }}" class="nav-link">
+        <i class="fas fa-plus-circle"></i> Contribute
+      </a>
+    </div>
+
+    <div class="stats-card">
+      <h2 class="stats-title">Corpus Overview</h2>
+      
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-number">{{ stats.stats.total_texts }}</div>
+          <div class="stat-label">Total Texts</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">{{ stats.stats.total_words }}</div>
+          <div class="stat-label">Total Words</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">{{ stats.stats.total_unique_words }}</div>
+          <div class="stat-label">Unique Words</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">{{ "%.1f"|format(stats.stats.avg_word_length) }}</div>
+          <div class="stat-label">Avg Word Length</div>
+        </div>
+      </div>
+      
+      <div class="stats-section">
+        <h3 class="stats-section-title">Most Frequent Words</h3>
+        
+        <div class="language-tabs">
+          <div class="language-tab active" data-tab="zu-words">isiZulu</div>
+          <div class="language-tab" data-tab="en-words">English</div>
+        </div>
+        
+        <!-- isiZulu Words -->
+        <div class="tab-content active" id="zu-words">
+          {% if stats.zu_word_frequency and stats.zu_word_frequency|length > 0 %}
+          <div class="word-list">
+            {% for word in stats.zu_word_frequency %}
+            <div class="word-item">
+              <div class="word-text">{{ word.word }}</div>
+              <div class="word-count">{{ word.frequency }} occurrences</div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="no-data">
+            <i class="fas fa-info-circle"></i>
+            <p>No isiZulu word frequency data available yet</p>
+          </div>
+          {% endif %}
+        </div>
+        
+        <!-- English Words -->
+        <div class="tab-content" id="en-words">
+          {% if stats.en_word_frequency and stats.en_word_frequency|length > 0 %}
+          <div class="word-list">
+            {% for word in stats.en_word_frequency %}
+            <div class="word-item">
+              <div class="word-text">{{ word.word }}</div>
+              <div class="word-count">{{ word.frequency }} occurrences</div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="no-data">
+            <i class="fas fa-info-circle"></i>
+            <p>No English word frequency data available yet</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      
+      <div class="stats-section">
+        <h3 class="stats-section-title">Common Word Pairs</h3>
+        
+        <div class="language-tabs">
+          <div class="language-tab active" data-tab="zu-pairs">isiZulu</div>
+          <div class="language-tab" data-tab="en-pairs">English</div>
+        </div>
+        
+        <!-- isiZulu Word Pairs -->
+        <div class="tab-content active" id="zu-pairs">
+          {% if stats.zu_word_pairs and stats.zu_word_pairs|length > 0 %}
+          <div>
+            {% for pair in stats.zu_word_pairs %}
+            <div class="word-pair-item">
+              <div class="word-pair-text">{{ pair.word1 }} - {{ pair.word2 }}</div>
+              <div class="word-count">{{ pair.frequency }} occurrences</div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="no-data">
+            <i class="fas fa-info-circle"></i>
+            <p>No isiZulu word pair data available yet</p>
+          </div>
+          {% endif %}
+        </div>
+        
+        <!-- English Word Pairs -->
+        <div class="tab-content" id="en-pairs">
+          {% if stats.en_word_pairs and stats.en_word_pairs|length > 0 %}
+          <div>
+            {% for pair in stats.en_word_pairs %}
+            <div class="word-pair-item">
+              <div class="word-pair-text">{{ pair.word1 }} - {{ pair.word2 }}</div>
+              <div class="word-count">{{ pair.frequency }} occurrences</div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="no-data">
+            <i class="fas fa-info-circle"></i>
+            <p>No English word pair data available yet</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      
+      <div class="last-updated">
+        Last updated: {{ stats.stats.last_updated }}
+      </div>
+    </div>
+
+    <footer>
+      © 2025 IsiZulu-English Cultural Corpus | Ulwazi lwethu, amagugu ethu
+    </footer>
+  </div>
+
+  <script>
+    // Tab functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const tabs = document.querySelectorAll('.language-tab');
+      
+      tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+          // Remove active class from all tabs and content
+          document.querySelectorAll('.language-tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          
+          // Add active class to clicked tab
+          this.classList.add('active');
+          
+          // Show corresponding content
+          const tabId = this.getAttribute('data-tab');
+          document.getElementById(tabId).classList.add('active');
+        });
+      });
+    });
+  </script>
+</body>
+</html>

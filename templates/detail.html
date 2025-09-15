@@ -7,10 +7,12 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
-      --primary-color: #2267e6;
-      --secondary-color: #000ed3;
-      --accent-color: #12a1f3;
-      --text-dark: #2c3e50;
+      --primary-color: #007749; /* South African green */
+      --secondary-color: #000066; /* South African blue */
+      --accent-color: #FFB81C; /* South African gold */
+      --red-color: #E03C31; /* South African red */
+      --black-color: #000000; /* South African black */
+      --white-color: #FFFFFF; /* South African white */
       --text-light: #ecf0f1;
       --shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
       --shadow-hover: 0 8px 15px rgba(0, 0, 0, 0.3);
@@ -19,7 +21,6 @@
       --font-size-xl: 1.25rem;
       --font-size-2xl: 1.5rem;
       --font-size-3xl: 2rem;
-      --font-size-4xl: 2.8rem;
     }
 
     * {
@@ -68,9 +69,9 @@
     }
     
     .logo {
-      font-size: var(--font-size-4xl);
+      font-size: var(--font-size-3xl);
       font-weight: bold;
-      color: var(--primary-color);
+      color: var(--accent-color);
       text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
       margin-bottom: 8px;
       line-height: 1.2;
@@ -83,20 +84,49 @@
       margin-bottom: 20px;
       line-height: 1.4;
     }
+
+    /* Navigation Links */
+    .nav-links {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+    }
+    
+    .nav-link {
+      color: var(--accent-color);
+      text-decoration: none;
+      padding: 10px 20px;
+      border: 1px solid var(--accent-color);
+      border-radius: 25px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .nav-link:hover,
+    .nav-link:focus {
+      background-color: var(--accent-color);
+      color: var(--black-color);
+      outline: none;
+    }
     
     .detail-card {
-      background: rgba(255, 255, 255, 0.15);
+      background: rgba(0, 119, 73, 0.3); /* South African green with transparency */
       border-radius: 14px;
       box-shadow: var(--shadow);
       padding: 20px;
       backdrop-filter: blur(2px);
       margin-bottom: 20px;
+      border: 1px solid var(--accent-color);
     }
     
     .detail-title {
-      font-size: var(--font-size-3xl);
-      margin-bottom: 10px;
-      color: #fff;
+      font-size: var(--font-size-2xl);
+      margin-bottom: 15px;
+      color: var(--accent-color);
       border-bottom: 2px solid var(--accent-color);
       padding-bottom: 10px;
       line-height: 1.3;
@@ -108,11 +138,31 @@
       margin-bottom: 20px;
     }
     
+    .language-section {
+      background: rgba(255, 184, 28, 0.1);
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid var(--accent-color);
+    }
+    
+    .language-heading {
+      color: var(--accent-color);
+      margin-bottom: 10px;
+      font-size: var(--font-size-lg);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
     .meta-info {
       font-size: 0.9rem;
       color: #ccc;
-      margin-top: 10px;
+      margin-top: 15px;
       font-style: italic;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 5px;
     }
     
     .back-link {
@@ -121,10 +171,11 @@
       color: var(--accent-color);
       text-decoration: none;
       font-weight: bold;
-      padding: 10px 15px;
-      border-radius: 5px;
-      background: rgba(255, 255, 255, 0.1);
-      transition: all 0.2s;
+      padding: 12px 20px;
+      border-radius: 25px;
+      background: rgba(255, 184, 28, 0.1);
+      transition: all 0.3s ease;
+      border: 1px solid var(--accent-color);
       min-height: 44px;
       min-width: 44px;
       display: inline-flex;
@@ -134,8 +185,8 @@
     
     .back-link:hover,
     .back-link:focus {
-      text-decoration: underline;
-      background: rgba(255, 255, 255, 0.2);
+      background-color: var(--accent-color);
+      color: var(--black-color);
       outline: none;
     }
     
@@ -147,59 +198,6 @@
       opacity: 0.9;
       padding: 15px 0;
     }
-    
-    .translate-controls {
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    
-    .translate-label {
-      font-weight: bold;
-    }
-    
-    .language-select {
-      padding: 10px 12px;
-      border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      background: rgba(0, 0, 0, 0.5);
-      color: white;
-      font-size: var(--font-size-base);
-      min-height: 44px;
-      flex: 1;
-      min-width: 120px;
-    }
-    
-    .translate-btn {
-      padding: 10px 16px;
-      background-color: var(--accent-color);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: var(--font-size-base);
-      transition: background-color 0.3s;
-      min-height: 44px;
-      min-width: 44px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .translate-btn:hover,
-    .translate-btn:focus {
-      background-color: var(--primary-color);
-      outline: none;
-    }
-    
-    .translation-note {
-      font-size: 0.8rem;
-      color: #ccc;
-      margin-top: 5px;
-      font-style: italic;
-    }
 
     /* Mobile responsiveness */
     @media (max-width: 768px) {
@@ -209,7 +207,6 @@
         --font-size-xl: 1.15rem;
         --font-size-2xl: 1.3rem;
         --font-size-3xl: 1.6rem;
-        --font-size-4xl: 2rem;
       }
       
       .container {
@@ -221,72 +218,30 @@
         padding: 16px;
       }
       
-      .translate-controls {
+      .nav-links {
         flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
+        align-items: center;
       }
       
-      .language-select {
+      .nav-link {
         width: 100%;
-      }
-      
-      .translate-btn {
-        width: 100%;
+        text-align: center;
         justify-content: center;
       }
     }
 
     @media (max-width: 480px) {
       :root {
-        --font-size-3xl: 1.4rem;
-        --font-size-4xl: 1.8rem;
+        --font-size-2xl: 1.4rem;
+        --font-size-3xl: 1.8rem;
       }
       
       .detail-title {
+        font-size: var(--font-size-2xl);
+      }
+      
+      .logo {
         font-size: var(--font-size-3xl);
-      }
-      
-      .logo {
-        font-size: var(--font-size-4xl);
-      }
-    }
-
-    /* Tablet specific adjustments */
-    @media (min-width: 769px) and (max-width: 1024px) {
-      .container {
-        width: 90%;
-        max-width: 800px;
-      }
-      
-      .logo {
-        font-size: 2.4rem;
-      }
-    }
-
-    /* Touch device improvements */
-    @media (hover: none) and (pointer: coarse) {
-      .back-link:hover {
-        background: rgba(255, 255, 255, 0.1);
-      }
-      
-      .translate-btn:hover {
-        background-color: var(--accent-color);
-      }
-    }
-
-    /* High contrast mode support */
-    @media (prefers-contrast: high) {
-      .detail-card {
-        background: rgba(0, 0, 0, 0.7);
-        border: 2px solid white;
-      }
-    }
-
-    /* Reduced motion support */
-    @media (prefers-reduced-motion: reduce) {
-      * {
-        transition: none !important;
       }
     }
   </style>
@@ -300,40 +255,62 @@
       <div class="tagline">Umsuka wolwazi lwesiZulu | The Source of IsiZulu Knowledge</div>
     </div>
 
+    <!-- Navigation Links -->
+    <div class="nav-links">
+      <a href="{{ url_for('home') }}" class="nav-link">
+        <i class="fas fa-home"></i> Home
+      </a>
+      <a href="{{ url_for('search') }}" class="nav-link">
+        <i class="fas fa-search"></i> Search Corpus
+      </a>
+      <a href="{{ url_for('contribute') }}" class="nav-link">
+        <i class="fas fa-plus-circle"></i> Contribute
+      </a>
+      <a href="{{ url_for('statistics') }}" class="nav-link">
+        <i class="fas fa-chart-bar"></i> Statistics
+      </a>
+    </div>
+
     <div class="detail-card">
       <h1 class="detail-title">{{ text[1] }}</h1>
 
-      <!-- Translation Controls -->
-      <div class="translate-controls">
-        <span class="translate-label">Translate to:</span>
-        <select id="languageSelect" class="language-select" aria-label="Select translation language">
-          <option value="original">Original (isiZulu/English)</option>
-        <option value="en">English</option>
-        <option value="ss">SiSwati</option>
-        <option value="st">Sesotho</option>
-        <option value="es">Spanish</option>
-        <option value="pt">Portuguese</option>
-        <option value="de">German</option>
-        <option value="zh">Chinese</option>
-        <option value="ar">Arabic</option>
-        <option value="xh">Xhosa</option>
-        <option value="ve">Venda</option>
-        </select>
-        <button id="translateBtn" class="translate-btn" aria-label="Translate content">
-          <i class="fas fa-language" aria-hidden="true"></i> Translate
-        </button>
+      <!-- isiZulu Content -->
+      <div class="language-section">
+        <h2 class="language-heading">
+          <i class="fas fa-language"></i> isiZulu Content
+        </h2>
+        
+        <div class="detail-content">
+          <p><strong>Isifinyezo (Summary):</strong> {{ text[3] }}</p>
+          <p><strong>Okuqukethwe Okuphelele (Full Content):</strong></p>
+          <p>{{ text[5] }}</p>
+        </div>
       </div>
-      <p class="translation-note">Note: Translation may not be perfect</p>
 
-      <div class="detail-content">
-        <p><strong>Summary:</strong> <span id="summaryText">{{ text[2] }}</span></p>
-        <p id="fullText">{{ text[3] }}</p>
+      <!-- English Content -->
+      <div class="language-section">
+        <h2 class="language-heading">
+          <i class="fas fa-language"></i> English Content
+        </h2>
+        
+        <div class="detail-content">
+          <p><strong>Summary:</strong> {{ text[4] }}</p>
+          <p><strong>Full Content:</strong></p>
+          <p>{{ text[6] }}</p>
+        </div>
       </div>
+
       <div class="meta-info">
-        Category: {{ text[4] }} | Added on: {{ text[5] if text[5] else 'Unknown' }}
+        <p><strong>Category:</strong> {{ text[7] }}</p>
+        <p><strong>Date Added:</strong> {{ text[8] if text[8] else 'Unknown' }}</p>
+        <p><strong>Word Count:</strong> {{ text[9] }} | <strong>Unique Words:</strong> {{ text[10] }}</p>
+        {% if text[11] %}
+        <p><strong>Source:</strong> {{ text[11] }}</p>
+        {% endif %}
       </div>
-      <a href="{{ url_for('search') }}" class="back-link">
-        <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Search
+      
+      <a href="{{ url_for('home') }}" class="back-link">
+        <i class="fas fa-home"></i> Back to Home
       </a>
     </div>
 
@@ -341,67 +318,5 @@
       © 2025 IsiZulu-English Cultural Corpus | Ulwazi lwethu, amagugu ethu
     </footer>
   </div>
-
-  <div style="position: absolute; top: 15px; left: 15px; z-index: 2;">
-    <a href="/" style="background-color: rgba(255, 255, 255, 0.8); color: #000; padding: 10px 14px; border-radius: 6px; font-size: 0.95rem; text-decoration: none; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: background 0.3s; min-height: 44px; min-width: 44px; display: flex; align-items: center;"
-       onmouseover="this.style.backgroundColor='rgba(255,255,255,1)'" onmouseout="this.style.backgroundColor='rgba(255,255,255,0.8)'">
-      ← Back to Menu
-    </a>
-  </div>
-
-  <script>
-    // Translation functionality
-    document.getElementById('translateBtn').addEventListener('click', function() {
-      const languageSelect = document.getElementById('languageSelect');
-      const selectedLanguage = languageSelect.value;
-
-      if (selectedLanguage === 'original') {
-        document.getElementById('summaryText').textContent = "{{ text[2] }}";
-        document.getElementById('fullText').textContent = "{{ text[3] }}";
-        return;
-      }
-
-      const originalBtnText = this.textContent;
-      this.textContent = 'Translating...';
-      this.disabled = true;
-
-      const summaryText = document.getElementById('summaryText').textContent;
-      const fullText = document.getElementById('fullText').textContent;
-
-      function translateText(text, targetLang, callback) {
-        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
-        fetch(url)
-          .then(response => response.json())
-          .then(data => {
-            callback(data[0].map(item => item[0]).join(''));
-          })
-          .catch(err => { console.error(err); callback(text); });
-      }
-
-      translateText(summaryText, selectedLanguage, function(translatedSummary){
-        document.getElementById('summaryText').textContent = translatedSummary;
-        translateText(fullText, selectedLanguage, function(translatedFull){
-          document.getElementById('fullText').textContent = translatedFull;
-          document.getElementById('translateBtn').textContent = originalBtnText;
-          document.getElementById('translateBtn').disabled = false;
-        });
-      });
-    });
-    
-    // Make translation accessible via keyboard
-    document.getElementById('translateBtn').addEventListener('keypress', function(e) {
-      if (e.key === 'Enter' || e.key === ' ') {
-        this.click();
-        e.preventDefault();
-      }
-    });
-    
-    document.getElementById('languageSelect').addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        document.getElementById('translateBtn').click();
-        e.preventDefault();
-      }
-    });
-  </script>
 </body>
 </html>

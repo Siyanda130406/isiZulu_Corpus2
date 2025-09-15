@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <title>Error - IsiZulu-English Cultural Corpus</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary-color: #007749; /* South African green */
+      --secondary-color: #000066; /* South African blue */
+      --accent-color: #FFB81C; /* South African gold */
+      --red-color: #E03C31; /* South African red */
+      --black-color: #000000; /* South African black */
+      --white-color: #FFFFFF; /* South African white */
+      --text-light: #ecf0f1;
+      --shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+      --shadow-hover: 0 8px 15px rgba(0, 0, 0, 0.3);
+      --font-size-base: 1rem;
+      --font-size-lg: 1.1rem;
+      --font-size-xl: 1.25rem;
+      --font-size-2xl: 1.5rem;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: url("/static/bg1.jpg") no-repeat center center fixed;
+      background-size: cover;
+      color: var(--text-light);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 92%;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px 15px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    .error-card {
+      background: rgba(0, 119, 73, 0.3);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 40px;
+      backdrop-filter: blur(2px);
+      margin-bottom: 25px;
+      border: 1px solid var(--accent-color);
+      text-align: center;
+    }
+    
+    .error-icon {
+      font-size: 4rem;
+      color: var(--red-color);
+      margin-bottom: 20px;
+    }
+    
+    .error-title {
+      font-size: var(--font-size-2xl);
+      color: var(--accent-color);
+      margin-bottom: 15px;
+    }
+    
+    .error-message {
+      font-size: var(--font-size-lg);
+      margin-bottom: 30px;
+      line-height: 1.5;
+    }
+    
+    .back-link {
+      display: inline-block;
+      color: var(--accent-color);
+      text-decoration: none;
+      font-weight: bold;
+      padding: 12px 25px;
+      border-radius: 25px;
+      background: rgba(255, 184, 28, 0.1);
+      transition: all 0.3s ease;
+      border: 1px solid var(--accent-color);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .back-link:hover,
+    .back-link:focus {
+      background-color: var(--accent-color);
+      color: var(--black-color);
+      outline: none;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      padding: 20px 0;
+      color: var(--text-light);
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay"></div>
+  
+  <div class="container">
+    <div class="error-card">
+      <div class="error-icon">
+        <i class="fas fa-exclamation-triangle"></i>
+      </div>
+      <h1 class="error-title">Error</h1>
+      <p class="error-message">{{ error_message }}</p>
+      <a href="{{ url_for('home') }}" class="back-link">
+        <i class="fas fa-home"></i> Back to Home
+      </a>
+    </div>
+
+    <footer>
+      © 2025 IsiZulu-English Cultural Corpus | Ulwazi lwethu, amagugu ethu
+    </footer>
+  </div>
+</body>
+</html>
