@@ -1,4 +1,4 @@
-# app.py - PostgreSQL compatible version
+# app.py - Fixed detail view error
 import os
 import re
 from flask import Flask, render_template, request, redirect, url_for, abort, flash
@@ -202,7 +202,8 @@ def get_corpus_statistics():
             stats = cursor.fetchone()
         else:
             cursor.execute("SELECT * FROM corpus_stats ORDER BY last_updated DESC LIMIT 1")
-            stats = dict_factory(cursor, cursor.fetchone()) if cursor.fetchone() else None
+            row = cursor.fetchone()
+            stats = dict_factory(cursor, row) if row else None
         
         # Get all texts for analysis
         cursor.execute("SELECT content, content_en, full_content, full_content_en FROM texts")
@@ -426,6 +427,7 @@ def search():
                            is_category_search=is_category_search,
                            category_display_name=category_display_name)
 
+# FIXED DETAIL ROUTE - This was causing the error
 @app.route('/detail/<int:item_id>')
 def detail(item_id):
     conn = get_db_connection()
@@ -440,10 +442,12 @@ def detail(item_id):
             row = cursor.fetchone()
         else:
             cursor.execute("SELECT id, title, title_en, content, content_en, full_content, full_content_en, category, date_added, word_count, unique_words, source FROM texts WHERE id = ?", (item_id,))
-            row = dict_factory(cursor, cursor.fetchone()) if cursor.fetchone() else None
+            row_data = cursor.fetchone()
+            row = dict_factory(cursor, row_data) if row_data else None
             
-        if not row:
-            return ("Not found", 404)
+        # FIX: Check if row is None before accessing it
+        if row is None:
+            return render_template('error.html', error_message=f'Content with ID {item_id} not found'), 404
         
         # Get category display name
         category_display = get_category_display_name(row['category'], 'en')
@@ -467,7 +471,7 @@ def detail(item_id):
         return render_template('detail.html', text=text)
     except Exception as e:
         print("Error in detail view:", e)
-        return ("Error loading content", 500)
+        return render_template('error.html', error_message='Error loading content'), 500
     finally:
         cursor.close()
         conn.close()
@@ -605,12 +609,47 @@ def test_db():
             cursor.execute("DELETE FROM texts WHERE title = ?", ("Test Title",))
         
         conn.commit()
-        conn.close()
         
         return f"Database test successful! Tables: {tables}, Inserted record: {result['id'] if result else 'None'}"
         
     except Exception as e:
         return f"Database test failed: {str(e)}"
+    finally:
+        cursor.close()
+        conn.close()
+
+# Debug route to check all content
+@app.route('/debug/contents')
+def debug_contents():
+    """Debug route to check all content in database"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if we're using PostgreSQL
+        is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
+        
+        cursor.execute("SELECT id, title, category FROM texts ORDER BY id")
+        
+        if is_postgres:
+            contents = cursor.fetchall()
+        else:
+            contents = [dict_factory(cursor, row) for row in cursor.fetchall()]
+        
+        cursor.close()
+        conn.close()
+        
+        if not contents:
+            return "No content found in database. The database might be empty."
+        
+        result = "<h1>Database Contents</h1><ul>"
+        for content in contents:
+            result += f"<li>ID: {content['id']}, Title: {content['title']}, Category: {content['category']}</li>"
+        result += "</ul>"
+        
+        return result
+    except Exception as e:
+        return f"Error retrieving contents: {str(e)}"
 
 @app.errorhandler(404)
 def not_found(error):
