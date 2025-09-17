@@ -1,7 +1,7 @@
-# app.py - Fixed detail view error
+# app.py - Fixed with dual database support (PostgreSQL + SQLite)
 import os
 import re
-from flask import Flask, render_template, request, redirect, url_for, abort, flash
+from flask import Flask, render_template, request, redirect, url_for, flash
 from collections import Counter
 
 # Try to import PostgreSQL
@@ -11,7 +11,13 @@ try:
     POSTGRES_AVAILABLE = True
 except ImportError:
     POSTGRES_AVAILABLE = False
+
+# Try to import SQLite for local development
+try:
     import sqlite3
+    SQLITE_AVAILABLE = True
+except ImportError:
+    SQLITE_AVAILABLE = False
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
@@ -28,24 +34,41 @@ CATEGORY_MAP = {
 }
 
 def get_db_connection():
-    """Get database connection, using PostgreSQL if available"""
+    """Get database connection - PostgreSQL for production, SQLite for local dev"""
     database_url = os.environ.get('DATABASE_URL')
     
     if database_url and POSTGRES_AVAILABLE:
-        # Use PostgreSQL
-        conn = psycopg2.connect(database_url, sslmode='require')
-        return conn
-    else:
-        # Fallback to SQLite for local development
-        conn = sqlite3.connect('corpus.db')
-        conn.row_factory = sqlite3.Row
-        return conn
+        # Use PostgreSQL for production
+        try:
+            # Parse the database URL and ensure SSL mode for Render
+            parsed_url = psycopg2.extensions.parse_dsn(database_url)
+            parsed_url['sslmode'] = 'require'
+            conn_string = psycopg2.extensions.make_dsn(parsed_url)
+            
+            conn = psycopg2.connect(conn_string)
+            conn.autocommit = False
+            return conn
+        except Exception as e:
+            print(f"Error connecting to PostgreSQL: {e}")
+            # Fall through to SQLite
+            pass
+    
+    # Fallback to SQLite for local development
+    if SQLITE_AVAILABLE:
+        try:
+            conn = sqlite3.connect('corpus.db')
+            conn.row_factory = sqlite3.Row
+            return conn
+        except Exception as e:
+            print(f"Error connecting to SQLite: {e}")
+    
+    raise ValueError("No database connection available")
 
 def dict_factory(cursor, row):
     """Convert database row to dictionary for both SQLite and PostgreSQL"""
-    if POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL'):
-        # PostgreSQL already returns dict-like objects
-        return row
+    if hasattr(row, '_asdict') and callable(row._asdict):
+        # PostgreSQL with RealDictCursor
+        return dict(row)
     else:
         # SQLite: convert row to dictionary
         d = {}
@@ -60,7 +83,7 @@ def init_database():
     cursor = conn.cursor()
     
     try:
-        # Check if we're using PostgreSQL
+        # Check if we're using PostgreSQL or SQLite
         is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
         
         if is_postgres:
@@ -91,6 +114,12 @@ def init_database():
                     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
+            
+            # Create indexes for better performance
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_texts_category ON texts(category)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_texts_title ON texts(title)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_texts_title_en ON texts(title_en)')
+            
         else:
             # SQLite table creation (for local development)
             cursor.execute('''
@@ -137,6 +166,7 @@ def init_database():
         
         conn.commit()
         print("Database initialization completed successfully!")
+        print(f"Using database: {'PostgreSQL' if is_postgres else 'SQLite'}")
         return True
     except Exception as e:
         print(f"Error initializing database: {e}")
@@ -190,12 +220,16 @@ def extract_words(text):
 def get_corpus_statistics():
     """Get corpus statistics with error handling - for both languages"""
     conn = get_db_connection()
-    cursor = conn.cursor()
+    
+    # Check if we're using PostgreSQL or SQLite
+    is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
+    
+    if is_postgres:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        cursor = conn.cursor()
     
     try:
-        # Check if we're using PostgreSQL
-        is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
-        
         # Get basic statistics
         if is_postgres:
             cursor.execute("SELECT * FROM corpus_stats ORDER BY last_updated DESC LIMIT 1")
@@ -308,12 +342,16 @@ def search():
 
         if query:
             conn = get_db_connection()
-            cursor = conn.cursor()
+            
+            # Check if we're using PostgreSQL or SQLite
+            is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
+            
+            if is_postgres:
+                cursor = conn.cursor(cursor_factory=RealDictCursor)
+            else:
+                cursor = conn.cursor()
             
             try:
-                # Check if we're using PostgreSQL
-                is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
-                
                 params = []
                 where_clauses = []
                 
@@ -431,12 +469,16 @@ def search():
 @app.route('/detail/<int:item_id>')
 def detail(item_id):
     conn = get_db_connection()
-    cursor = conn.cursor()
+    
+    # Check if we're using PostgreSQL or SQLite
+    is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
+    
+    if is_postgres:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        cursor = conn.cursor()
     
     try:
-        # Check if we're using PostgreSQL
-        is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
-        
         if is_postgres:
             cursor.execute("SELECT id, title, title_en, content, content_en, full_content, full_content_en, category, date_added, word_count, unique_words, source FROM texts WHERE id = %s", (item_id,))
             row = cursor.fetchone()
@@ -518,7 +560,7 @@ def contribute():
             cursor = conn.cursor()
             
             try:
-                # Check if we're using PostgreSQL
+                # Check if we're using PostgreSQL or SQLite
                 is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
                 
                 if is_postgres:
@@ -577,10 +619,14 @@ def test_db():
     """Test route to check if database is working"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
         
-        # Check if we're using PostgreSQL
+        # Check if we're using PostgreSQL or SQLite
         is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
+        
+        if is_postgres:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = conn.cursor()
         
         # Check if tables exist
         if is_postgres:
@@ -624,10 +670,14 @@ def debug_contents():
     """Debug route to check all content in database"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
         
-        # Check if we're using PostgreSQL
+        # Check if we're using PostgreSQL or SQLite
         is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
+        
+        if is_postgres:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            cursor = conn.cursor()
         
         cursor.execute("SELECT id, title, category FROM texts ORDER BY id")
         
@@ -650,6 +700,19 @@ def debug_contents():
         return result
     except Exception as e:
         return f"Error retrieving contents: {str(e)}"
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Render"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.close()
+        conn.close()
+        return {'status': 'healthy', 'database': 'connected'}, 200
+    except Exception as e:
+        return {'status': 'unhealthy', 'database': 'disconnected', 'error': str(e)}, 500
 
 @app.errorhandler(404)
 def not_found(error):
