@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager Dashboard - IsiZulu Corpus</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #007749;
+            --secondary-color: #000066;
+            --accent-color: #FFB81C;
+            --text-light: #ecf0f1;
+        }
+        
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: url("/static/bg1.jpg") no-repeat center center fixed;
+            background-size: cover;
+            color: var(--text-light);
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        .overlay {
+            position: fixed; top:0; left:0; right:0; bottom:0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 0;
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            width: 92%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+        
+        .user-info {
+            text-align: right;
+            margin-bottom: 20px;
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+        
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            padding: 10px 20px;
+            border: 1px solid var(--accent-color);
+            border-radius: 25px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link:hover {
+            background-color: var(--accent-color);
+            color: black;
+        }
+        
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: rgba(0, 119, 73, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid var(--accent-color);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            margin: 10px 0;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+            cursor: pointer;
+        }
+        
+        .btn-primary {
+            background: var(--accent-color);
+            color: black;
+            font-weight: bold;
+        }
+        
+        .contribution-item {
+            background: rgba(0, 119, 73, 0.2);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border: 1px solid var(--accent-color);
+        }
+        
+        .contribution-actions {
+            margin-top: 10px;
+        }
+        
+        .alert {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid;
+        }
+        
+        .alert-success {
+            background: rgba(39, 174, 96, 0.3);
+            border-color: #27ae60;
+            color: #2ecc71;
+        }
+        
+        .alert-error {
+            background: rgba(231, 76, 60, 0.3);
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay"></div>
+    
+    <div class="container">
+        <div class="user-info">
+            Welcome, {{ user.username }} ({{ user.role }}) | 
+            <a href="{{ url_for('logout') }}" style="color: var(--accent-color);">Logout</a>
+        </div>
+        
+        <div class="header">
+            <div class="logo">Manager Dashboard</div>
+            <p>Manage corpus contributions and reviews</p>
+        </div>
+        
+        <div class="nav-links">
+            <a href="{{ url_for('home') }}" class="nav-link">Home</a>
+            <a href="{{ url_for('search') }}" class="nav-link">Search</a>
+            <a href="{{ url_for('contribute') }}" class="nav-link">Contribute</a>
+            <a href="{{ url_for('statistics') }}" class="nav-link">Statistics</a>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-success">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="dashboard-cards">
+            <div class="card">
+                <h3>Pending Contributions</h3>
+                <div class="stat-number">{{ pending_count }}</div>
+                <a href="{{ url_for('manager_pending') }}" class="btn btn-primary">Review All</a>
+            </div>
+        </div>
+
+        {% if pending_texts %}
+        <div class="recent-pending">
+            <h2>Recent Pending Contributions</h2>
+            {% for text in pending_texts %}
+            <div class="contribution-item">
+                <h3>{{ text.title }}</h3>
+                <p><strong>English Title:</strong> {{ text.title_en }}</p>
+                <p><strong>Category:</strong> {{ text.category }}</p>
+                <p><strong>Submitted by:</strong> {{ text.username }}</p>
+                <p><strong>Date:</strong> {{ text.date_added }}</p>
+                <div class="contribution-actions">
+                    <a href="{{ url_for('detail', text_id=text.id) }}" class="btn" style="background: #3498db; color: white;">View Details</a>
+                    <a href="{{ url_for('manager_approve', text_id=text.id) }}" class="btn" style="background: #27ae60; color: white;" 
+                       onclick="return confirm('Approve this contribution?')">Approve</a>
+                    <a href="{{ url_for('manager_reject', text_id=text.id) }}" class="btn" style="background: #e74c3c; color: white;" 
+                       onclick="return confirm('Reject this contribution?')">Reject</a>
+                </div>
+            </div>
+            {% endfor %}
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="{{ url_for('manager_pending') }}" class="btn btn-primary">View All Pending Contributions</a>
+            </div>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 40px;">
+            <p>No pending contributions at the moment.</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

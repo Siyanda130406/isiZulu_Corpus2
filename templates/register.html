@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <title>Register - IsiZulu Corpus</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary-color: #007749;
+      --secondary-color: #000066;
+      --accent-color: #FFB81C;
+      --red-color: #E03C31;
+      --black-color: #000000;
+      --white-color: #FFFFFF;
+      --text-light: #ecf0f1;
+      --shadow: 0 4px 6px rgba(0,0,0,0.5);
+      --shadow-hover: 0 8px 15px rgba(0,0,0,0.3);
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: url("/static/bg1.jpg") no-repeat center center fixed;
+      background-size: cover;
+      color: var(--text-light);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .overlay {
+      position: fixed; top:0; left:0; right:0; bottom:0;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 92%;
+      max-width: 500px;
+      margin: auto;
+      padding: 25px;
+    }
+
+    .header-block {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .logo {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: var(--accent-color);
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+    }
+
+    .auth-card {
+      background: rgba(0,119,73,0.3);
+      border: 1px solid var(--accent-color);
+      border-radius: 14px;
+      padding: 25px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(2px);
+    }
+
+    .auth-card h2 {
+      text-align: center;
+      color: var(--accent-color);
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+      background: rgba(255,255,255,0.9);
+      color: var(--black-color);
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 12px;
+      border-radius: 25px;
+      border: none;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: all 0.3s;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    p {
+      text-align: center;
+      margin-top: 15px;
+    }
+
+    .alert {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      text-align: center;
+    }
+
+    .alert-error {
+      background: rgba(231, 76, 60, 0.3);
+      border: 1px solid #e74c3c;
+      color: #e74c3c;
+    }
+
+    .alert-success {
+      background: rgba(39, 174, 96, 0.3);
+      border: 1px solid #27ae60;
+      color: #2ecc71;
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay"></div>
+
+  <div class="container">
+    <div class="header-block">
+      <div class="logo"><i class="fas fa-user-plus"></i> Register</div>
+    </div>
+
+    <div class="auth-card">
+      <h2>Create an Account</h2>
+      
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{% if 'success' in message %}success{% else %}error{% endif %}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      
+      <form method="POST">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required>
+          <small style="color: #ccc;">Must be at least 6 characters long</small>
+        </div>
+
+        <button type="submit" class="btn-primary"><i class="fas fa-user-check"></i> Register</button>
+      </form>
+
+      <p>Already have an account? <a href="{{ url_for('login') }}" style="color:var(--accent-color)">Login</a></p>
+    </div>
+  </div>
+</body>
+</html>

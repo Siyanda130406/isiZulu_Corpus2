@@ -7,12 +7,12 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
-      --primary-color: #007749; /* South African green */
-      --secondary-color: #000066; /* South African blue */
-      --accent-color: #FFB81C; /* South African gold */
-      --red-color: #E03C31; /* South African red */
-      --black-color: #000000; /* South African black */
-      --white-color: #FFFFFF; /* South African white */
+      --primary-color: #007749;
+      --secondary-color: #000066;
+      --accent-color: #FFB81C;
+      --red-color: #E03C31;
+      --black-color: #000000;
+      --white-color: #FFFFFF;
       --text-light: #ecf0f1;
       --shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
       --shadow-hover: 0 8px 15px rgba(0, 0, 0, 0.3);
@@ -80,7 +80,43 @@
       line-height: 1.4;
     }
 
-    /* Navigation Links */
+    .user-nav {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      text-align: right;
+      z-index: 10;
+    }
+    
+    .user-welcome {
+      color: var(--accent-color);
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    
+    .user-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    
+    .user-btn {
+      background: rgba(255, 184, 28, 0.2);
+      color: var(--accent-color);
+      border: 1px solid var(--accent-color);
+      padding: 8px 15px;
+      border-radius: 20px;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+    
+    .user-btn:hover {
+      background: var(--accent-color);
+      color: var(--black-color);
+    }
+
     .nav-links {
       display: flex;
       justify-content: center;
@@ -101,11 +137,9 @@
       gap: 8px;
     }
     
-    .nav-link:hover,
-    .nav-link:focus {
+    .nav-link:hover {
       background-color: var(--accent-color);
       color: var(--black-color);
-      outline: none;
     }
 
     .search-card {
@@ -180,15 +214,6 @@
       margin-bottom: 6px;
       line-height: 1.4;
     }
-    
-    .search-tips code {
-      background: rgba(0, 0, 0, 0.4);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: monospace;
-      cursor: pointer;
-      color: var(--accent-color);
-    }
 
     .category-badges {
       display: flex;
@@ -232,6 +257,26 @@
       margin-bottom: 20px;
       font-size: 0.95rem;
       opacity: 0.9;
+      text-align: center;
+    }
+    
+    .occurrence-count {
+      background: rgba(255, 184, 28, 0.2);
+      padding: 10px 20px;
+      border-radius: 20px;
+      border: 1px solid var(--accent-color);
+      color: var(--accent-color);
+      font-weight: bold;
+      margin: 15px auto;
+      display: inline-block;
+    }
+    
+    .category-search-notice {
+      background: rgba(0, 119, 73, 0.3);
+      padding: 15px;
+      border-radius: 10px;
+      border: 1px solid var(--accent-color);
+      margin: 15px 0;
       text-align: center;
     }
     
@@ -302,41 +347,74 @@
       opacity: 0.7;
     }
 
+    /* Pagination Styles */
     .pagination {
       display: flex;
       justify-content: center;
       align-items: center;
-      margin-top: 25px;
+      margin: 30px 0;
       gap: 10px;
       flex-wrap: wrap;
     }
     
-    .pagination button {
-      padding: 10px 16px;
-      background: rgba(255, 184, 28, 0.2);
+    .pagination a, .pagination span {
+      padding: 10px 15px;
       border: 1px solid var(--accent-color);
+      border-radius: 8px;
+      text-decoration: none;
       color: var(--accent-color);
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-size: 0.9rem;
+      background: rgba(255, 184, 28, 0.1);
+      transition: all 0.3s ease;
+      font-weight: bold;
     }
     
-    .pagination button:hover:not(:disabled) {
+    .pagination a:hover {
       background: var(--accent-color);
       color: var(--black-color);
+      transform: translateY(-2px);
     }
     
-    .pagination button:disabled {
+    .pagination .current {
+      background: var(--accent-color);
+      color: var(--black-color);
+      border-color: var(--accent-color);
+    }
+    
+    .pagination .disabled {
       opacity: 0.5;
       cursor: not-allowed;
+      background: rgba(255, 184, 28, 0.05);
     }
     
-    .page-info {
-      padding: 10px 15px;
-      margin: 0 8px;
-      font-size: 0.9rem;
+    .pagination .disabled:hover {
+      background: rgba(255, 184, 28, 0.05);
       color: var(--accent-color);
+      transform: none;
+    }
+
+    /* Flash Messages */
+    .flash-messages {
+      margin-bottom: 20px;
+    }
+    
+    .flash-message {
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      text-align: center;
+      font-weight: bold;
+    }
+    
+    .flash-success {
+      background: rgba(39, 174, 96, 0.3);
+      border: 1px solid #27ae60;
+      color: #2ecc71;
+    }
+    
+    .flash-error {
+      background: rgba(231, 76, 60, 0.3);
+      border: 1px solid #e74c3c;
+      color: #e74c3c;
     }
 
     footer {
@@ -351,6 +429,16 @@
       .container {
         width: 95%;
         padding: 15px 10px;
+      }
+      
+      .user-nav {
+        position: static;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      
+      .user-buttons {
+        justify-content: center;
       }
       
       .nav-links {
@@ -380,32 +468,13 @@
         justify-content: center;
       }
       
-      .category-badges {
-        gap: 6px;
-      }
-      
-      .category-badge {
-        padding: 6px 12px;
-        font-size: 0.8rem;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .logo {
-        font-size: 1.6rem;
-      }
-      
-      .results-title {
-        font-size: var(--font-size-lg);
-      }
-      
       .pagination {
-        flex-direction: column;
-        gap: 8px;
+        gap: 5px;
       }
       
-      .page-info {
-        margin: 8px 0;
+      .pagination a, .pagination span {
+        padding: 8px 12px;
+        font-size: 0.9rem;
       }
     }
   </style>
@@ -414,6 +483,23 @@
   <div class="overlay"></div>
   
   <div class="container">
+    <!-- User Info -->
+    {% if user %}
+    <div class="user-nav">
+      <div class="user-welcome">Welcome, {{ user.username }} ({{ user.role }})</div>
+      <div class="user-buttons">
+        <a href="{{ url_for('logout') }}" class="user-btn">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+        {% if user.role in ['manager', 'admin'] %}
+        <a href="{{ url_for('manager_dashboard') }}" class="user-btn">
+          <i class="fas fa-tachometer-alt"></i> Dashboard
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
     <div class="header-block">
       <div class="logo">IsiZulu-English Corpus</div>
       <div class="tagline">Search our cultural knowledge base</div>
@@ -432,10 +518,22 @@
       </a>
     </div>
 
+    <!-- Flash Messages -->
+    <div class="flash-messages">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash-message flash-{{ category }}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+
     <div class="search-card">
       <form action="/search" method="POST" class="search-container">
         <input type="text" name="query" class="search-bar" placeholder="Sesha izaga, izibongo, izisho..." value="{{ query or '' }}" required>
-        <input type="hidden" name="page" value="1">
         <button type="submit" class="search-button">
           <i class="fas fa-search"></i> Search
         </button>
@@ -445,71 +543,90 @@
         <details>
           <summary>Search Tips</summary>
           <ul>
-            <li>Search categories: <code>izaga</code>, <code>izibongo</code>, <code>izisho</code></li>
-            <li>Use quotes: <code>"ubuntu botho"</code></li>
-            <li>Search fields: <code>title:"izibongo"</code></li>
+            <li>Search for proverbs, poetry, idioms, and more</li>
+            <li>Use both isiZulu and English terms</li>
+            <li>Try searching by category: izaga, izibongo, izisho</li>
+            <li>Search for specific categories by name (e.g., "izaga" for all proverbs)</li>
           </ul>
         </details>
         
         <div class="category-badges">
-          <button class="category-badge" onclick="searchCategory('izaga')">Izaga</button>
-          <button class="category-badge" onclick="searchCategory('izibongo')">Izibongo</button>
-          <button class="category-badge" onclick="searchCategory('izisho')">Izisho</button>
+          <button class="category-badge" onclick="searchCategory('izaga')">Izaga (Proverbs)</button>
+          <button class="category-badge" onclick="searchCategory('izibongo')">Izibongo (Praise Poetry)</button>
+          <button class="category-badge" onclick="searchCategory('izisho')">Izisho (Idioms)</button>
           <button class="category-badge" onclick="searchCategory('philosophy')">Philosophy</button>
           <button class="category-badge" onclick="searchCategory('folktale')">Folktales</button>
-          <button class="category-badge" onclick="searchCategory('history')">History</button>
         </div>
       </div>
     </div>
 
     {% if query %}
     <div class="results-wrap">
+      <h2 class="results-title">
+        {% if is_category_search %}
+          {{ query|title }} Category
+        {% else %}
+          Results for "{{ query }}"
+        {% endif %}
+      </h2>
+      
+      <p class="results-info">Found {{ total_results }} result(s)</p>
+      
       {% if is_category_search %}
-      <h2 class="results-title">All {{ category_display_name or query|title }} Content</h2>
-      <p class="results-info">Showing all items in the {{ category_display_name or query }} category</p>
-      {% else %}
-      <h2 class="results-title">Results for "{{ query }}"</h2>
-      <p class="results-info">
-        Showing {{ results|length }} of {{ total_results }} results 
-        {% if total_pages > 1 %}(Page {{ current_page }} of {{ total_pages }}){% endif %}
-      </p>
+      <div class="category-search-notice">
+        <i class="fas fa-filter"></i>
+        Showing all content in the <strong>{{ query }}</strong> category
+      </div>
+      {% endif %}
+      
+      {% if total_occurrences > 0 and not is_category_search %}
+      <div class="occurrence-count">
+        <i class="fas fa-chart-bar"></i>
+        Total occurrences in corpus: {{ total_occurrences }}
+      </div>
       {% endif %}
 
       {% if results and results|length > 0 %}
       <div class="results">
         {% for result in results %}
-        <div class="result" onclick="window.location.href='/detail/{{ result[0] }}'">
-          <h3><a href="/detail/{{ result[0] }}">{{ result[1] }}</a></h3>
-          <p>{{ result[2] | safe }}</p>
-          <p class="category-label">Category: {{ result[3] }}</p>
-          {% if result|length > 4 and result[4] %}
-          <p class="word-stats">Words: {{ result[4] }} | Unique: {{ result[5] }}</p>
-          {% endif %}
+        <div class="result" onclick="window.location.href='{{ url_for('detail', text_id=result.id) }}'">
+          <h3><a href="{{ url_for('detail', text_id=result.id) }}">{{ result.title }}</a></h3>
+          <p>{{ result.content }}</p>
+          <p class="category-label">Category: {{ result.category }}</p>
+          <p class="word-stats">Words: {{ result.word_count }} | Unique: {{ result.unique_words }}</p>
         </div>
         {% endfor %}
       </div>
-      
+
+      <!-- Pagination -->
       {% if total_pages > 1 %}
       <div class="pagination">
-        <form action="/search" method="POST">
-          <input type="hidden" name="query" value="{{ query }}">
-          <input type="hidden" name="page" value="{{ current_page - 1 }}">
-          <button type="submit" {% if current_page == 1 %}disabled{% endif %}>
+        {% if page > 1 %}
+          <a href="{{ url_for('search', q=query, page=page-1) }}">
             <i class="fas fa-chevron-left"></i> Previous
-          </button>
-        </form>
-        
-        <span class="page-info">Page {{ current_page }} of {{ total_pages }}</span>
-        
-        <form action="/search" method="POST">
-          <input type="hidden" name="query" value="{{ query }}">
-          <input type="hidden" name="page" value="{{ current_page + 1 }}">
-          <button type="submit" {% if current_page >= total_pages %}disabled{% endif %}>
+          </a>
+        {% else %}
+          <span class="disabled"><i class="fas fa-chevron-left"></i> Previous</span>
+        {% endif %}
+
+        {% for p in range(1, total_pages + 1) %}
+          {% if p == page %}
+            <span class="current">{{ p }}</span>
+          {% else %}
+            <a href="{{ url_for('search', q=query, page=p) }}">{{ p }}</a>
+          {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+          <a href="{{ url_for('search', q=query, page=page+1) }}">
             Next <i class="fas fa-chevron-right"></i>
-          </button>
-        </form>
+          </a>
+        {% else %}
+          <span class="disabled">Next <i class="fas fa-chevron-right"></i></span>
+        {% endif %}
       </div>
       {% endif %}
+
       {% else %}
       <div class="no-results">
         <i class="fas fa-search"></i>
@@ -529,7 +646,6 @@
     function searchCategory(category) {
       const form = document.querySelector('form');
       form.querySelector('input[name="query"]').value = category;
-      form.querySelector('input[name="page"]').value = 1;
       form.submit();
     }
   </script>

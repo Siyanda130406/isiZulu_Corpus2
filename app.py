@@ -1,23 +1,27 @@
-# app.py - Fixed with dual database support (PostgreSQL + SQLite)
+# app.py - SUPPORTS BOTH SQLite & PostgreSQL
 import os
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
+from datetime import datetime
 import re
-from flask import Flask, render_template, request, redirect, url_for, flash
 from collections import Counter
 
-# Try to import PostgreSQL
+# Try to import both database systems
 try:
     import psycopg2
     from psycopg2.extras import RealDictCursor
     POSTGRES_AVAILABLE = True
 except ImportError:
     POSTGRES_AVAILABLE = False
+    print("PostgreSQL not available, using SQLite only")
 
-# Try to import SQLite for local development
 try:
     import sqlite3
     SQLITE_AVAILABLE = True
 except ImportError:
     SQLITE_AVAILABLE = False
+    print("SQLite not available")
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
@@ -37,692 +41,1026 @@ def get_db_connection():
     """Get database connection - PostgreSQL for production, SQLite for local dev"""
     database_url = os.environ.get('DATABASE_URL')
     
+    # Use PostgreSQL if DATABASE_URL is available (for production)
     if database_url and POSTGRES_AVAILABLE:
-        # Use PostgreSQL for production
         try:
-            # Parse the database URL and ensure SSL mode for Render
-            parsed_url = psycopg2.extensions.parse_dsn(database_url)
-            parsed_url['sslmode'] = 'require'
-            conn_string = psycopg2.extensions.make_dsn(parsed_url)
-            
-            conn = psycopg2.connect(conn_string)
-            conn.autocommit = False
+            # Parse the database URL for PostgreSQL
+            conn = psycopg2.connect(database_url, sslmode='require')
+            print("✅ Connected to PostgreSQL database")
             return conn
         except Exception as e:
-            print(f"Error connecting to PostgreSQL: {e}")
-            # Fall through to SQLite
-            pass
+            print(f"❌ PostgreSQL connection failed: {e}")
+            print("🔄 Falling back to SQLite...")
     
     # Fallback to SQLite for local development
     if SQLITE_AVAILABLE:
         try:
-            conn = sqlite3.connect('corpus.db')
+            os.makedirs('data', exist_ok=True)
+            conn = sqlite3.connect('data/corpus.db')
             conn.row_factory = sqlite3.Row
+            print("✅ Connected to SQLite database")
             return conn
         except Exception as e:
-            print(f"Error connecting to SQLite: {e}")
+            print(f"❌ SQLite connection failed: {e}")
     
-    raise ValueError("No database connection available")
+    raise Exception("No database connection available")
 
-def dict_factory(cursor, row):
-    """Convert database row to dictionary for both SQLite and PostgreSQL"""
-    if hasattr(row, '_asdict') and callable(row._asdict):
-        # PostgreSQL with RealDictCursor
-        return dict(row)
-    else:
-        # SQLite: convert row to dictionary
-        d = {}
-        for idx, col in enumerate(cursor.description):
-            d[col[0]] = row[idx]
-        return d
-
-def init_database():
-    """Initialize database tables"""
-    print("Initializing database...")
+def execute_query(query, params=()):
+    """Execute query with proper database handling"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
-        # Check if we're using PostgreSQL or SQLite
-        is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
+        cursor.execute(query, params)
         
-        if is_postgres:
-            # PostgreSQL table creation
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS texts (
-                    id SERIAL PRIMARY KEY,
-                    title TEXT NOT NULL,
-                    title_en TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    content_en TEXT NOT NULL,
-                    full_content TEXT,
-                    full_content_en TEXT,
-                    category TEXT NOT NULL,
-                    date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    word_count INTEGER DEFAULT 0,
-                    unique_words INTEGER DEFAULT 0,
-                    source TEXT
-                )
-            ''')
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS corpus_stats (
-                    id SERIAL PRIMARY KEY,
-                    total_words INTEGER DEFAULT 0,
-                    total_unique_words INTEGER DEFAULT 0,
-                    total_texts INTEGER DEFAULT 0,
-                    avg_word_length REAL DEFAULT 0,
-                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            # Create indexes for better performance
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_texts_category ON texts(category)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_texts_title ON texts(title)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_texts_title_en ON texts(title_en)')
-            
+        # For SELECT queries, fetch results
+        if query.strip().upper().startswith('SELECT'):
+            result = cursor.fetchall()
         else:
-            # SQLite table creation (for local development)
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS texts (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    title TEXT NOT NULL,
-                    title_en TEXT NOT NULL,
-                    content TEXT NOT NULL,
-                    content_en TEXT NOT NULL,
-                    full_content TEXT,
-                    full_content_en TEXT,
-                    category TEXT NOT NULL,
-                    date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    word_count INTEGER DEFAULT 0,
-                    unique_words INTEGER DEFAULT 0,
-                    source TEXT
-                )
-            ''')
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS corpus_stats (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    total_words INTEGER DEFAULT 0,
-                    total_unique_words INTEGER DEFAULT 0,
-                    total_texts INTEGER DEFAULT 0,
-                    avg_word_length REAL DEFAULT 0,
-                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-        
-        # Initialize corpus_stats if empty
-        if is_postgres:
-            cursor.execute("SELECT COUNT(*) as count FROM corpus_stats")
-            result = cursor.fetchone()
-            count = result['count'] if result else 0
-        else:
-            cursor.execute("SELECT COUNT(*) as count FROM corpus_stats")
-            count = cursor.fetchone()[0]
-        
-        if count == 0:
-            if is_postgres:
-                cursor.execute("INSERT INTO corpus_stats (total_words, total_unique_words, total_texts, avg_word_length) VALUES (0, 0, 0, 0)")
-            else:
-                cursor.execute("INSERT INTO corpus_stats (total_words, total_unique_words, total_texts, avg_word_length) VALUES (0, 0, 0, 0)")
-        
-        conn.commit()
-        print("Database initialization completed successfully!")
-        print(f"Using database: {'PostgreSQL' if is_postgres else 'SQLite'}")
-        return True
-    except Exception as e:
-        print(f"Error initializing database: {e}")
-        conn.rollback()
-        return False
-    finally:
-        cursor.close()
-        conn.close()
-
-# Initialize database when the app starts
-init_database()
-
-def parse_search_query(q):
-    parsed = {'terms': [], 'phrases': [], 'filters': {}, 'category_search': None}
-    if not q:
-        return parsed
-    # quoted phrases
-    parsed['phrases'] = re.findall(r'"([^"]+)"', q)
-    tmp = re.sub(r'"[^"]+"', '', q)
-    # filters of form key:value
-    for m in re.findall(r'(\w+):(".*?"|\S+)', tmp):
-        key = m[0]
-        val = m[1].strip('"')
-        parsed['filters'][key] = val
-        tmp = tmp.replace(f'{key}:{m[1]}', '')
-    # remaining terms
-    parsed['terms'] = [t for t in re.split(r'\s+', tmp) if t]
-    
-    # Check if the query matches any category term (English or IsiZulu)
-    query_lower = q.strip().lower()
-    for category_id, names in CATEGORY_MAP.items():
-        if query_lower == names['en'].lower() or query_lower == names['zu'].lower() or query_lower == category_id:
-            parsed['category_search'] = category_id
-            break
-    
-    return parsed
-
-def get_category_display_name(category_id, language='en'):
-    """Get the display name for a category in the specified language"""
-    if category_id in CATEGORY_MAP:
-        return CATEGORY_MAP[category_id][language]
-    return category_id
-
-def extract_words(text):
-    """Extract words from text using regex"""
-    if not text:
-        return []
-    # Match words with Unicode support for isiZulu characters
-    return re.findall(r'[\w\u00C0-\u017F]+', text.lower())
-
-def get_corpus_statistics():
-    """Get corpus statistics with error handling - for both languages"""
-    conn = get_db_connection()
-    
-    # Check if we're using PostgreSQL or SQLite
-    is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
-    
-    if is_postgres:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-    else:
-        cursor = conn.cursor()
-    
-    try:
-        # Get basic statistics
-        if is_postgres:
-            cursor.execute("SELECT * FROM corpus_stats ORDER BY last_updated DESC LIMIT 1")
-            stats = cursor.fetchone()
-        else:
-            cursor.execute("SELECT * FROM corpus_stats ORDER BY last_updated DESC LIMIT 1")
-            row = cursor.fetchone()
-            stats = dict_factory(cursor, row) if row else None
-        
-        # Get all texts for analysis
-        cursor.execute("SELECT content, content_en, full_content, full_content_en FROM texts")
-        if is_postgres:
-            texts = cursor.fetchall()
-        else:
-            texts = [dict_factory(cursor, row) for row in cursor.fetchall()]
-        
-        # Analyze both languages
-        zu_words = []
-        en_words = []
-        
-        for text in texts:
-            # Extract isiZulu words
-            if text['content']:
-                zu_words.extend(extract_words(text['content']))
-            if text['full_content']:
-                zu_words.extend(extract_words(text['full_content']))
-            
-            # Extract English words
-            if text['content_en']:
-                en_words.extend(extract_words(text['content_en']))
-            if text['full_content_en']:
-                en_words.extend(extract_words(text['full_content_en']))
-        
-        # Get word frequency for both languages
-        zu_word_freq = Counter(zu_words).most_common(20)
-        en_word_freq = Counter(en_words).most_common(20)
-        
-        # Get word pairs for both languages
-        def get_word_pairs(words, n=15):
-            pairs = Counter()
-            for i in range(len(words) - 1):
-                pair = (words[i], words[i+1])
-                pairs[pair] += 1
-            return pairs.most_common(n)
-        
-        zu_word_pairs = get_word_pairs(zu_words)
-        en_word_pairs = get_word_pairs(en_words)
-        
-        return {
-            'stats': stats if stats else {
-                'total_words': 0,
-                'total_unique_words': 0,
-                'total_texts': 0,
-                'avg_word_length': 0,
-                'last_updated': 'Never'
-            },
-            'zu_word_frequency': [{'word': word, 'frequency': count} for word, count in zu_word_freq],
-            'en_word_frequency': [{'word': word, 'frequency': count} for word, count in en_word_freq],
-            'zu_word_pairs': [{'word1': pair[0], 'word2': pair[1], 'frequency': count} for pair, count in zu_word_pairs],
-            'en_word_pairs': [{'word1': pair[0], 'word2': pair[1], 'frequency': count} for pair, count in en_word_pairs]
-        }
-    except Exception as e:
-        print(f"Error getting corpus statistics: {e}")
-        return {
-            'stats': {
-                'total_words': 0,
-                'total_unique_words': 0,
-                'total_texts': 0,
-                'avg_word_length': 0,
-                'last_updated': 'Never'
-            },
-            'zu_word_frequency': [],
-            'en_word_frequency': [],
-            'zu_word_pairs': [],
-            'en_word_pairs': []
-        }
-    finally:
-        cursor.close()
-        conn.close()
-
-@app.route('/')
-def home():
-    return render_template('index.html')
-
-@app.route('/search', methods=['GET', 'POST'])
-def search():
-    query = ''
-    results = []
-    total_results = 0
-    per_page = 10
-    current_page = 1
-    parsed_query = None
-    is_category_search = False
-    total_pages = 1
-    category_display_name = None
-
-    if request.method == 'POST':
-        query = (request.form.get('query') or '').strip()
-        try:
-            current_page = int(request.form.get('page', '1'))
-            if current_page < 1:
-                current_page = 1
-        except ValueError:
-            current_page = 1
-
-        parsed_query = parse_search_query(query)
-        if parsed_query.get('category_search'):
-            is_category_search = True
-            category_display_name = get_category_display_name(parsed_query['category_search'], 'en')
-
-        if query:
-            conn = get_db_connection()
-            
-            # Check if we're using PostgreSQL or SQLite
-            is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
-            
-            if is_postgres:
-                cursor = conn.cursor(cursor_factory=RealDictCursor)
-            else:
-                cursor = conn.cursor()
-            
-            try:
-                params = []
-                where_clauses = []
-                
-                if is_category_search:
-                    # Exact category match (search by category ID)
-                    where_clauses.append("category = %s" if is_postgres else "category = ?")
-                    params.append(parsed_query['category_search'])
-                else:
-                    # Search in both isiZulu and English fields
-                    search_terms = []
-                    
-                    # Add quoted phrases as exact matches
-                    for phrase in parsed_query['phrases']:
-                        search_terms.append(f'%{phrase}%')
-                    
-                    # Add individual terms
-                    for term in parsed_query['terms']:
-                        search_terms.append(f'%{term}%')
-                    
-                    # Build OR conditions for all search terms across all fields
-                    or_conditions = []
-                    for term in search_terms:
-                        if is_postgres:
-                            or_conditions.append("(title ILIKE %s OR title_en ILIKE %s OR content ILIKE %s OR content_en ILIKE %s OR full_content ILIKE %s OR full_content_en ILIKE %s OR category ILIKE %s)")
-                            params.extend([term, term, term, term, term, term, term])
-                        else:
-                            or_conditions.append("(title LIKE ? OR title_en LIKE ? OR content LIKE ? OR content_en LIKE ? OR full_content LIKE ? OR full_content_en LIKE ? OR category LIKE ?)")
-                            params.extend([term, term, term, term, term, term, term])
-                    
-                    if or_conditions:
-                        where_clauses.append(f"({' OR '.join(or_conditions)})")
-                
-                # Handle filters
-                for key, value in parsed_query['filters'].items():
-                    if key.lower() == 'category':
-                        # Map English category names to category IDs
-                        category_id = None
-                        for cat_id, names in CATEGORY_MAP.items():
-                            if value.lower() == names['en'].lower() or value.lower() == names['zu'].lower() or value.lower() == cat_id:
-                                category_id = cat_id
-                                break
-                        
-                        if category_id:
-                            where_clauses.append("category = %s" if is_postgres else "category = ?")
-                            params.append(category_id)
-                        else:
-                            where_clauses.append("category ILIKE %s" if is_postgres else "category LIKE ?")
-                            params.append(f'%{value}%')
-                    elif key.lower() == 'title':
-                        where_clauses.append("(title ILIKE %s OR title_en ILIKE %s)" if is_postgres else "(title LIKE ? OR title_en LIKE ?)")
-                        params.extend([f'%{value}%', f'%{value}%'])
-                    elif key.lower() == 'content':
-                        where_clauses.append("(content ILIKE %s OR content_en ILIKE %s)" if is_postgres else "(content LIKE ? OR content_en LIKE ?)")
-                        params.extend([f'%{value}%', f'%{value}%'])
-
-                where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
-                
-                # count total
-                count_sql = f"SELECT COUNT(1) FROM texts {where_sql}"
-                cursor.execute(count_sql, params)
-                
-                if is_postgres:
-                    total_results = cursor.fetchone()['count'] or 0
-                else:
-                    total_results = cursor.fetchone()[0] or 0
-                    
-                total_pages = (total_results + per_page - 1) // per_page if total_results else 1
-                
-                # Get results
-                offset = (current_page - 1) * per_page
-                sql = f"SELECT id, title, title_en, content, content_en, category, word_count, unique_words FROM texts {where_sql} ORDER BY id DESC LIMIT %s OFFSET %s" if is_postgres else f"SELECT id, title, title_en, content, content_en, category, word_count, unique_words FROM texts {where_sql} ORDER BY id DESC LIMIT ? OFFSET ?"
-                
-                cursor.execute(sql, params + [per_page, offset])
-                
-                if is_postgres:
-                    rows = cursor.fetchall()
-                else:
-                    rows = [dict_factory(cursor, row) for row in cursor.fetchall()]
-                
-                for r in rows:
-                    # Highlight search terms in the content
-                    content = f"{r['content']} {r['content_en']}" or ''
-                    snippet = content[:300]
-                    
-                    # Simple highlighting for each search term
-                    for term in parsed_query['terms'] + parsed_query['phrases']:
-                        if term:
-                            snippet = snippet.replace(term, f'<mark>{term}</mark>')
-                    
-                    # Get category display name
-                    category_display = get_category_display_name(r['category'], 'en')
-                    
-                    results.append((r['id'], r['title'], snippet, category_display, r['word_count'], r['unique_words']))
-                    
-            except Exception as e:
-                print("DB search error:", e)
-                results = []
-                total_results = 0
-                total_pages = 1
-            finally:
-                cursor.close()
-                conn.close()
-
-    return render_template('search.html',
-                           query=query,
-                           results=results,
-                           total_results=total_results,
-                           total_pages=total_pages,
-                           current_page=current_page,
-                           parsed_query=parsed_query,
-                           is_category_search=is_category_search,
-                           category_display_name=category_display_name)
-
-# FIXED DETAIL ROUTE - This was causing the error
-@app.route('/detail/<int:item_id>')
-def detail(item_id):
-    conn = get_db_connection()
-    
-    # Check if we're using PostgreSQL or SQLite
-    is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
-    
-    if is_postgres:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-    else:
-        cursor = conn.cursor()
-    
-    try:
-        if is_postgres:
-            cursor.execute("SELECT id, title, title_en, content, content_en, full_content, full_content_en, category, date_added, word_count, unique_words, source FROM texts WHERE id = %s", (item_id,))
-            row = cursor.fetchone()
-        else:
-            cursor.execute("SELECT id, title, title_en, content, content_en, full_content, full_content_en, category, date_added, word_count, unique_words, source FROM texts WHERE id = ?", (item_id,))
-            row_data = cursor.fetchone()
-            row = dict_factory(cursor, row_data) if row_data else None
-            
-        # FIX: Check if row is None before accessing it
-        if row is None:
-            return render_template('error.html', error_message=f'Content with ID {item_id} not found'), 404
-        
-        # Get category display name
-        category_display = get_category_display_name(row['category'], 'en')
-        
-        # Prepare the data in the format your template expects - as a tuple
-        text = (
-            row['id'],           # text[0] - ID (not used in template)
-            row['title'],        # text[1] - Title (isiZulu)
-            row['title_en'],     # text[2] - Title (English)
-            row['content'],      # text[3] - Summary/Short content (isiZulu)
-            row['content_en'],   # text[4] - Summary/Short content (English)
-            row['full_content'] or row['content'],  # text[5] - Full content (isiZulu)
-            row['full_content_en'] or row['content_en'],  # text[6] - Full content (English)
-            category_display,    # text[7] - Category (display name)
-            row['date_added'],   # text[8] - Date added
-            row['word_count'],   # text[9] - Word count
-            row['unique_words'], # text[10] - Unique words
-            row['source']        # text[11] - Source information
-        )
-        
-        return render_template('detail.html', text=text)
-    except Exception as e:
-        print("Error in detail view:", e)
-        return render_template('error.html', error_message='Error loading content'), 500
-    finally:
-        cursor.close()
-        conn.close()
-
-@app.route('/contribute', methods=['GET', 'POST'])
-def contribute():
-    """Page for users to contribute new content to the corpus"""
-    if request.method == 'POST':
-        try:
-            # Get form data
-            title_zu = request.form.get('title_zu', '').strip()
-            title_en = request.form.get('title_en', '').strip()
-            content_zu = request.form.get('content_zu', '').strip()
-            content_en = request.form.get('content_en', '').strip()
-            full_content_zu = request.form.get('full_content_zu', '').strip()
-            full_content_en = request.form.get('full_content_en', '').strip()
-            category = request.form.get('category', '').strip()
-            source = request.form.get('source', '').strip()
-            
-            print(f"Form data received: title_zu={title_zu}, title_en={title_en}, category={category}")
-            
-            # Basic validation
-            if not all([title_zu, title_en, content_zu, content_en, category]):
-                flash("Please fill in all required fields", "error")
-                return render_template('contribute.html', categories=CATEGORY_MAP)
-            
-            # Calculate word statistics
-            def count_words(text):
-                return len(text.split()) if text else 0
-            
-            def get_unique_words(text):
-                if not text:
-                    return set()
-                words = text.lower().split()
-                return set(words)
-            
-            word_count = count_words(content_zu)
-            unique_words = len(get_unique_words(content_zu))
-            
-            print(f"Word count: {word_count}, Unique words: {unique_words}")
-            
-            # Save to database
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            try:
-                # Check if we're using PostgreSQL or SQLite
-                is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
-                
-                if is_postgres:
-                    # PostgreSQL insert
-                    cursor.execute(
-                        "INSERT INTO texts (title, title_en, content, content_en, full_content, full_content_en, category, word_count, unique_words, source) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
-                        (title_zu, title_en, content_zu, content_en, full_content_zu or content_zu, full_content_en or content_en, category, word_count, unique_words, source)
-                    )
-                else:
-                    # SQLite insert
-                    cursor.execute(
-                        "INSERT INTO texts (title, title_en, content, content_en, full_content, full_content_en, category, word_count, unique_words, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        (title_zu, title_en, content_zu, content_en, full_content_zu or content_zu, full_content_en or content_en, category, word_count, unique_words, source)
-                    )
-                
-                # Update corpus statistics
-                if is_postgres:
-                    cursor.execute("UPDATE corpus_stats SET total_words = total_words + %s, total_unique_words = total_unique_words + %s, total_texts = total_texts + 1, last_updated = CURRENT_TIMESTAMP", 
-                                (word_count, unique_words))
-                else:
-                    cursor.execute("UPDATE corpus_stats SET total_words = total_words + ?, total_unique_words = total_unique_words + ?, total_texts = total_texts + 1, last_updated = CURRENT_TIMESTAMP", 
-                                (word_count, unique_words))
-                
-                conn.commit()
-                print("Contribution saved successfully")
-                flash("Thank you for your contribution! Your content has been added to the corpus.", "success")
-                return redirect(url_for('contribute'))
-                
-            except Exception as e:
-                print(f"Error saving contribution: {e}")
-                flash("An error occurred while saving your contribution. Please try again.", "error")
-                return render_template('contribute.html', categories=CATEGORY_MAP)
-            finally:
-                cursor.close()
-                conn.close()
-                
-        except Exception as e:
-            print(f"Error processing contribution form: {e}")
-            flash("An error occurred while processing your contribution. Please try again.", "error")
-            return render_template('contribute.html', categories=CATEGORY_MAP)
-    
-    return render_template('contribute.html', categories=CATEGORY_MAP)
-
-@app.route('/statistics')
-def statistics():
-    """Page showing corpus statistics"""
-    try:
-        stats = get_corpus_statistics()
-        return render_template('statistics.html', stats=stats)
-    except Exception as e:
-        print(f"Error in statistics route: {e}")
-        return render_template('error.html', error_message='Error loading statistics'), 500
-
-@app.route('/test-db')
-def test_db():
-    """Test route to check if database is working"""
-    try:
-        conn = get_db_connection()
-        
-        # Check if we're using PostgreSQL or SQLite
-        is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
-        
-        if is_postgres:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-        else:
-            cursor = conn.cursor()
-        
-        # Check if tables exist
-        if is_postgres:
-            cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
-            tables = [row['table_name'] for row in cursor.fetchall()]
-        else:
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            tables = [row[0] for row in cursor.fetchall()]
-        
-        # Check if we can insert a test record
-        if is_postgres:
-            cursor.execute("INSERT INTO texts (title, title_en, content, content_en, category) VALUES (%s, %s, %s, %s, %s) RETURNING id",
-                         ("Test Title", "Test Title EN", "Test content", "Test content EN", "test"))
-            inserted_id = cursor.fetchone()['id']
-            cursor.execute("SELECT * FROM texts WHERE id = %s", (inserted_id,))
-            result = cursor.fetchone()
-            # Clean up test record
-            cursor.execute("DELETE FROM texts WHERE id = %s", (inserted_id,))
-        else:
-            cursor.execute("INSERT INTO texts (title, title_en, content, content_en, category) VALUES (?, ?, ?, ?, ?)",
-                         ("Test Title", "Test Title EN", "Test content", "Test content EN", "test"))
+            # For INSERT/UPDATE/DELETE, commit and return rowcount
             conn.commit()
-            cursor.execute("SELECT * FROM texts WHERE title = ?", ("Test Title",))
-            result = dict_factory(cursor, cursor.fetchone()) if cursor.fetchone() else None
-            # Clean up test record
-            cursor.execute("DELETE FROM texts WHERE title = ?", ("Test Title",))
-        
-        conn.commit()
-        
-        return f"Database test successful! Tables: {tables}, Inserted record: {result['id'] if result else 'None'}"
-        
-    except Exception as e:
-        return f"Database test failed: {str(e)}"
-    finally:
-        cursor.close()
-        conn.close()
-
-# Debug route to check all content
-@app.route('/debug/contents')
-def debug_contents():
-    """Debug route to check all content in database"""
-    try:
-        conn = get_db_connection()
-        
-        # Check if we're using PostgreSQL or SQLite
-        is_postgres = POSTGRES_AVAILABLE and os.environ.get('DATABASE_URL')
-        
-        if is_postgres:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-        else:
-            cursor = conn.cursor()
-        
-        cursor.execute("SELECT id, title, category FROM texts ORDER BY id")
-        
-        if is_postgres:
-            contents = cursor.fetchall()
-        else:
-            contents = [dict_factory(cursor, row) for row in cursor.fetchall()]
-        
-        cursor.close()
-        conn.close()
-        
-        if not contents:
-            return "No content found in database. The database might be empty."
-        
-        result = "<h1>Database Contents</h1><ul>"
-        for content in contents:
-            result += f"<li>ID: {content['id']}, Title: {content['title']}, Category: {content['category']}</li>"
-        result += "</ul>"
+            result = cursor.rowcount
         
         return result
     except Exception as e:
-        return f"Error retrieving contents: {str(e)}"
-
-@app.route('/health')
-def health_check():
-    """Health check endpoint for Render"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1")
+        conn.rollback()
+        raise e
+    finally:
         cursor.close()
         conn.close()
-        return {'status': 'healthy', 'database': 'connected'}, 200
-    except Exception as e:
-        return {'status': 'unhealthy', 'database': 'disconnected', 'error': str(e)}, 500
 
+def init_database():
+    """Initialize database tables with sample data - WORKS WITH BOTH SQLite & PostgreSQL"""
+    print("🔄 Initializing database...")
+    
+    conn = None
+    try:
+        conn = get_db_connection()
+        
+        # Check if we're using PostgreSQL or SQLite
+        is_postgres = 'postgresql' in str(conn).lower() if conn else False
+        print(f"📊 Database type: {'PostgreSQL' if is_postgres else 'SQLite'}")
+        
+        cursor = conn.cursor()
+        
+        # Create users table
+        if is_postgres:
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(80) UNIQUE NOT NULL,
+                    email VARCHAR(120) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    role VARCHAR(20) DEFAULT 'user',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS texts (
+                    id SERIAL PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    title_en TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    content_en TEXT NOT NULL,
+                    full_content TEXT,
+                    full_content_en TEXT,
+                    category TEXT NOT NULL,
+                    date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    word_count INTEGER DEFAULT 0,
+                    unique_words INTEGER DEFAULT 0,
+                    source TEXT,
+                    user_id INTEGER,
+                    status TEXT DEFAULT 'approved'
+                )
+            ''')
+        else:
+            # SQLite schema
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    role TEXT DEFAULT 'user',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS texts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    title_en TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    content_en TEXT NOT NULL,
+                    full_content TEXT,
+                    full_content_en TEXT,
+                    category TEXT NOT NULL,
+                    date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    word_count INTEGER DEFAULT 0,
+                    unique_words INTEGER DEFAULT 0,
+                    source TEXT,
+                    user_id INTEGER,
+                    status TEXT DEFAULT 'approved'
+                )
+            ''')
+        
+        # Check if users table is empty
+        if is_postgres:
+            cursor.execute("SELECT COUNT(*) FROM users")
+        else:
+            cursor.execute("SELECT COUNT(*) FROM users")
+        user_count = cursor.fetchone()[0]
+        
+        if user_count == 0:
+            print("👥 Creating default users...")
+            users_data = [
+                ('admin', 'admin@corpus.com', generate_password_hash('admin123'), 'admin'),
+                ('manager', 'manager@corpus.com', generate_password_hash('manager123'), 'manager'),
+                ('user', 'user@corpus.com', generate_password_hash('user123'), 'user')
+            ]
+            
+            for username, email, password_hash, role in users_data:
+                if is_postgres:
+                    cursor.execute(
+                        "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, %s)",
+                        (username, email, password_hash, role)
+                    )
+                else:
+                    cursor.execute(
+                        "INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)",
+                        (username, email, password_hash, role)
+                    )
+        
+        # Check if texts table is empty
+        if is_postgres:
+            cursor.execute("SELECT COUNT(*) FROM texts")
+        else:
+            cursor.execute("SELECT COUNT(*) FROM texts")
+        text_count = cursor.fetchone()[0]
+        
+        if text_count == 0:
+            print("📝 Adding comprehensive sample texts...")
+            
+            # COMPREHENSIVE SAMPLE TEXTS
+            sample_texts = [
+                ("Indlela ibuzwa kwabaphambili", "A path is asked from those who have walked it before",
+                 "Isaga elikhuthaza ukulalela abanolwazi.", "A proverb that encourages listening to those with knowledge.",
+                 "Indlela ibuzwa kwabaphambili. Leli isaga likhombisa ukubaluleka kokulalela abantu abanolwazi.", 
+                 "A path is asked from those who have walked it before. This proverb shows the importance of listening to knowledgeable people.",
+                 "izaga", "Traditional isiZulu wisdom", 60, 45),
+                
+                ("Umuntu ngumuntu ngabantu", "A person is a person through other people", 
+                 "Isaga elichaza ukubaluleka kobuntu.", "A proverb that explains the importance of humanity.",
+                 "Umuntu ngumuntu ngabantu. Leli isaga ligcizelela ukuxhumana kwabantu.", 
+                 "A person is a person through other people. This proverb emphasizes human interconnectedness.",
+                 "izaga", "Traditional isiZulu philosophy", 55, 40),
+                
+                ("Izibongo zikaShaka", "Praise Poetry of Shaka",
+                 "Ubulawu obungelanga bulawu! Wen' owadl' amanye amadoda.", "The magic that was not magic! You who devoured other men.",
+                 "Izibongo zenkosi uShaka kaSenzangakhona. Ubulawu obungelanga bulawu! Wen' owadl' amanye amadoda.", 
+                 "Praise poetry of King Shaka kaSenzangakhona. The magic that was not magic! You who devoured other men.",
+                 "izibongo", "Historical Zulu oral tradition", 80, 55),
+                
+                ("Isisho sokuthi ukuhamba kukufunda", "The saying that traveling is learning",
+                 "Lesi isisho sikhomba ukubaluleka kokuhamba nokufunda.", "This saying shows the importance of traveling and learning.",
+                 "Isisho sokuthi ukuhamba kukufunda. Lesi isisho sikhombisa ukuthi ukuhamba kuyindlela yokufunda.", 
+                 "The saying that traveling is learning. This saying shows that traveling is a way of learning.",
+                 "izisho", "Traditional wisdom", 50, 35),
+                
+                ("Ubuntu botho", "Humanity philosophy",
+                 "Umqondo wobuntu owawuthandwa ngabantu basendulo.", "The concept of humanity that was loved by ancient people.",
+                 "Ubuntu botho. Umqondo wobuntu owawuthandwa ngabantu basendulo.", 
+                 "Humanity philosophy. The concept of humanity that was loved by ancient people.",
+                 "philosophy", "Traditional philosophy", 45, 30)
+            ]
+            
+            for text in sample_texts:
+                if is_postgres:
+                    cursor.execute('''
+                        INSERT INTO texts (title, title_en, content, content_en, full_content, full_content_en, category, source, word_count, unique_words, status) 
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'approved')
+                    ''', text)
+                else:
+                    cursor.execute('''
+                        INSERT INTO texts (title, title_en, content, content_en, full_content, full_content_en, category, source, word_count, unique_words, status) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved')
+                    ''', text)
+        
+        conn.commit()
+        
+        # Verify the data
+        if is_postgres:
+            cursor.execute("SELECT COUNT(*) as count, status FROM texts GROUP BY status")
+        else:
+            cursor.execute("SELECT COUNT(*) as count, status FROM texts GROUP BY status")
+        status_counts = cursor.fetchall()
+        
+        print("✅ Database initialized successfully!")
+        print("📊 Texts in database:")
+        for row in status_counts:
+            if is_postgres:
+                print(f"   {row[1]}: {row[0]} texts")
+            else:
+                print(f"   {row['status']}: {row['count']} texts")
+        
+    except Exception as e:
+        print(f"❌ Error initializing database: {e}")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            cursor.close()
+            conn.close()
+
+# Initialize database when app starts
+init_database()
+
+# Authentication decorators
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page.', 'error')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def manager_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to access this page.', 'error')
+            return redirect(url_for('login'))
+        if session.get('role') not in ['manager', 'admin']:
+            flash('You need manager privileges to access this page.', 'error')
+            return redirect(url_for('home'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def get_current_user():
+    if 'user_id' in session:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        try:
+            # Check database type
+            is_postgres = 'postgresql' in str(conn).lower()
+            
+            if is_postgres:
+                cursor.execute("SELECT id, username, email, role FROM users WHERE id = %s", (session['user_id'],))
+            else:
+                cursor.execute("SELECT id, username, email, role FROM users WHERE id = ?", (session['user_id'],))
+            
+            row = cursor.fetchone()
+            
+            if row:
+                if is_postgres:
+                    user = {'id': row[0], 'username': row[1], 'email': row[2], 'role': row[3]}
+                else:
+                    user = {'id': row[0], 'username': row[1], 'email': row[2], 'role': row[3]}
+                return user
+        finally:
+            cursor.close()
+            conn.close()
+    return None
+
+def get_pending_count():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        is_postgres = 'postgresql' in str(conn).lower()
+        
+        if is_postgres:
+            cursor.execute("SELECT COUNT(*) FROM texts WHERE status = 'pending'")
+        else:
+            cursor.execute("SELECT COUNT(*) FROM texts WHERE status = 'pending'")
+        
+        count = cursor.fetchone()[0]
+        return count
+    finally:
+        cursor.close()
+        conn.close()
+
+def extract_words(text):
+    """Extract words from text for frequency analysis"""
+    if not text:
+        return []
+    words = re.findall(r'\b[a-zA-Z]+\b', text.lower())
+    return [word for word in words if len(word) > 2]  # Filter out very short words
+
+def generate_statistics():
+    """Generate comprehensive statistics for the corpus"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        is_postgres = 'postgresql' in str(conn).lower()
+        
+        # Get all approved texts
+        if is_postgres:
+            cursor.execute("SELECT * FROM texts WHERE status = 'approved'")
+        else:
+            cursor.execute("SELECT * FROM texts WHERE status = 'approved'")
+        
+        texts = cursor.fetchall()
+        
+        # Basic stats
+        total_texts = len(texts)
+        total_words = 0
+        total_unique_words = 0
+        all_zu_text = ""
+        all_en_text = ""
+        
+        for text in texts:
+            if is_postgres:
+                total_words += text[9] or 0  # word_count
+                total_unique_words += text[10] or 0  # unique_words
+                all_zu_text += f" {text[1]} {text[3]} {text[5] or ''}"  # title, content, full_content
+                all_en_text += f" {text[2]} {text[4]} {text[6] or ''}"  # title_en, content_en, full_content_en
+            else:
+                total_words += text['word_count'] or 0
+                total_unique_words += text['unique_words'] or 0
+                all_zu_text += f" {text['title']} {text['content']} {text['full_content'] or ''}"
+                all_en_text += f" {text['title_en']} {text['content_en']} {text['full_content_en'] or ''}"
+        
+        # Word frequency analysis
+        zu_words = extract_words(all_zu_text)
+        en_words = extract_words(all_en_text)
+        
+        zu_word_freq = Counter(zu_words).most_common(20)
+        en_word_freq = Counter(en_words).most_common(20)
+        
+        # Word pairs (bigrams)
+        zu_word_pairs = []
+        en_word_pairs = []
+        
+        if len(zu_words) > 1:
+            zu_bigrams = zip(zu_words[:-1], zu_words[1:])
+            zu_word_pairs = Counter(zu_bigrams).most_common(10)
+            zu_word_pairs = [{'word1': pair[0][0], 'word2': pair[0][1], 'frequency': pair[1]} for pair in zu_word_pairs]
+        
+        if len(en_words) > 1:
+            en_bigrams = zip(en_words[:-1], en_words[1:])
+            en_word_pairs = Counter(en_bigrams).most_common(10)
+            en_word_pairs = [{'word1': pair[0][0], 'word2': pair[0][1], 'frequency': pair[1]} for pair in en_word_pairs]
+        
+        # Category distribution
+        if is_postgres:
+            cursor.execute("SELECT category, COUNT(*) FROM texts WHERE status = 'approved' GROUP BY category")
+        else:
+            cursor.execute("SELECT category, COUNT(*) FROM texts WHERE status = 'approved' GROUP BY category")
+        category_stats = cursor.fetchall()
+        
+        stats = {
+            'stats': {
+                'total_texts': total_texts,
+                'total_words': total_words,
+                'total_unique_words': total_unique_words,
+                'avg_word_length': total_words / max(total_texts, 1),
+                'last_updated': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            },
+            'zu_word_frequency': [{'word': word, 'frequency': freq} for word, freq in zu_word_freq],
+            'en_word_frequency': [{'word': word, 'frequency': freq} for word, freq in en_word_freq],
+            'zu_word_pairs': zu_word_pairs,
+            'en_word_pairs': en_word_pairs,
+            'category_stats': category_stats
+        }
+        
+        return stats
+        
+    finally:
+        cursor.close()
+        conn.close()
+
+def count_search_occurrences(query):
+    """Count total occurrences of search term in all texts"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        is_postgres = 'postgresql' in str(conn).lower()
+        
+        # Get all approved texts content
+        if is_postgres:
+            cursor.execute("SELECT title, title_en, content, content_en, full_content, full_content_en FROM texts WHERE status = 'approved'")
+        else:
+            cursor.execute("SELECT title, title_en, content, content_en, full_content, full_content_en FROM texts WHERE status = 'approved'")
+        
+        texts = cursor.fetchall()
+        total_occurrences = 0
+        
+        for text in texts:
+            if is_postgres:
+                # Combine all text fields
+                combined_text = f"{text[0]} {text[1]} {text[2]} {text[3]} {text[4] or ''} {text[5] or ''}".lower()
+            else:
+                combined_text = f"{text['title']} {text['title_en']} {text['content']} {text['content_en']} {text['full_content'] or ''} {text['full_content_en'] or ''}".lower()
+            
+            # Count occurrences of the search term
+            total_occurrences += combined_text.count(query.lower())
+        
+        return total_occurrences
+        
+    finally:
+        cursor.close()
+        conn.close()
+
+# Routes
+@app.route('/')
+def root_redirect():
+    return redirect(url_for('login'))
+
+@app.route('/home')
+@login_required
+def home():
+    """Home page dashboard after login"""
+    user = get_current_user()
+    pending_count = get_pending_count()
+    
+    # Get some stats for the dashboard
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        is_postgres = 'postgresql' in str(conn).lower()
+        
+        # Get total approved texts
+        if is_postgres:
+            cursor.execute("SELECT COUNT(*) FROM texts WHERE status = 'approved'")
+        else:
+            cursor.execute("SELECT COUNT(*) FROM texts WHERE status = 'approved'")
+        total_texts = cursor.fetchone()[0]
+        
+        # Get texts by category
+        if is_postgres:
+            cursor.execute("SELECT category, COUNT(*) FROM texts WHERE status = 'approved' GROUP BY category")
+        else:
+            cursor.execute("SELECT category, COUNT(*) FROM texts WHERE status = 'approved' GROUP BY category")
+        category_stats = cursor.fetchall()
+        
+        # Get recent texts
+        if is_postgres:
+            cursor.execute("SELECT title, title_en, category, date_added FROM texts WHERE status = 'approved' ORDER BY date_added DESC LIMIT 5")
+        else:
+            cursor.execute("SELECT title, title_en, category, date_added FROM texts WHERE status = 'approved' ORDER BY date_added DESC LIMIT 5")
+        recent_texts = cursor.fetchall()
+        
+        stats = {
+            'total_texts': total_texts,
+            'category_stats': category_stats,
+            'recent_texts': recent_texts,
+            'is_postgres': is_postgres
+        }
+        
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return render_template('index.html', user=user, stats=stats, categories=CATEGORY_MAP, pending_count=pending_count)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        
+        if not username or not password:
+            flash('Please enter both username and password.', 'error')
+            return render_template('login.html')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        try:
+            is_postgres = 'postgresql' in str(conn).lower()
+            
+            if is_postgres:
+                cursor.execute("SELECT id, username, password_hash, role FROM users WHERE username = %s OR email = %s", (username, username))
+            else:
+                cursor.execute("SELECT id, username, password_hash, role FROM users WHERE username = ? OR email = ?", (username, username))
+            
+            row = cursor.fetchone()
+            
+            if row and check_password_hash(row[2], password):
+                session['user_id'] = row[0]
+                session['username'] = row[1]
+                session['role'] = row[3]
+                flash('Login successful!', 'success')
+                return redirect(url_for('home'))
+            else:
+                flash('Invalid username or password.', 'error')
+        finally:
+            cursor.close()
+            conn.close()
+    
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+        
+        if not username or not email or not password:
+            flash('All fields are required.', 'error')
+            return render_template('register.html')
+        
+        if len(password) < 6:
+            flash('Password must be at least 6 characters long.', 'error')
+            return render_template('register.html')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if username or email already exists
+        is_postgres = 'postgresql' in str(conn).lower()
+        
+        if is_postgres:
+            cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s", (username, email))
+        else:
+            cursor.execute("SELECT id FROM users WHERE username = ? OR email = ?", (username, email))
+        
+        if cursor.fetchone():
+            flash('Username or email already exists.', 'error')
+            conn.close()
+            return render_template('register.html')
+        
+        # Create new user (always as regular user role)
+        hashed_password = generate_password_hash(password)
+        
+        if is_postgres:
+            cursor.execute(
+                "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, 'user')",
+                (username, email, hashed_password)
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'user')",
+                (username, email, hashed_password)
+            )
+        
+        conn.commit()
+        conn.close()
+        
+        flash('Registration successful! Please log in.', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('register.html')
+
+@app.route('/contribute', methods=['GET', 'POST'])
+@login_required
+def contribute():
+    user = get_current_user()
+    
+    if request.method == 'POST':
+        title = request.form.get('title_zu', '').strip()
+        title_en = request.form.get('title_en', '').strip()
+        content = request.form.get('content_zu', '').strip()
+        content_en = request.form.get('content_en', '').strip()
+        full_content = request.form.get('full_content_zu', '').strip()
+        full_content_en = request.form.get('full_content_en', '').strip()
+        category = request.form.get('category', '').strip()
+        source = request.form.get('source', '').strip()
+        
+        if not all([title, title_en, content, content_en, category]):
+            flash('Please fill in all required fields.', 'error')
+            return render_template('contribute.html', user=user, categories=CATEGORY_MAP)
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        try:
+            is_postgres = 'postgresql' in str(conn).lower()
+            
+            # Calculate word counts
+            all_text = f"{content} {full_content}"
+            words = all_text.split()
+            word_count = len(words)
+            unique_words = len(set(words))
+            
+            # Insert with pending status
+            if is_postgres:
+                cursor.execute('''
+                    INSERT INTO texts (title, title_en, content, content_en, full_content, full_content_en, category, source, user_id, word_count, unique_words, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending')
+                ''', (title, title_en, content, content_en, full_content, full_content_en, category, source, session['user_id'], word_count, unique_words))
+            else:
+                cursor.execute('''
+                    INSERT INTO texts (title, title_en, content, content_en, full_content, full_content_en, category, source, user_id, word_count, unique_words, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+                ''', (title, title_en, content, content_en, full_content, full_content_en, category, source, session['user_id'], word_count, unique_words))
+            
+            conn.commit()
+            flash('Text submitted successfully! It will be reviewed by a manager.', 'success')
+            return redirect(url_for('contribute'))
+        finally:
+            cursor.close()
+            conn.close()
+    
+    return render_template('contribute.html', user=user, categories=CATEGORY_MAP)
+
+@app.route('/search', methods=['GET', 'POST'])
+@login_required
+def search():
+    user = get_current_user()
+    query = request.form.get('query', '').strip() if request.method == 'POST' else request.args.get('q', '')
+    page = request.args.get('page', 1, type=int)
+    results_per_page = 10
+    
+    results = []
+    total_results = 0
+    total_occurrences = 0
+    is_category_search = False
+    
+    if query:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        try:
+            is_postgres = 'postgresql' in str(conn).lower()
+            
+            # Check if query is a category
+            category_query = None
+            for category_id, category_info in CATEGORY_MAP.items():
+                if query.lower() in [category_id, category_info['en'].lower(), category_info['zu'].lower()]:
+                    category_query = category_id
+                    is_category_search = True
+                    break
+            
+            offset = (page - 1) * results_per_page
+            
+            if category_query:
+                # Search by category
+                if is_postgres:
+                    # Get total count
+                    cursor.execute('''
+                        SELECT COUNT(*) FROM texts 
+                        WHERE status = 'approved' AND category = %s
+                    ''', (category_query,))
+                    total_results = cursor.fetchone()[0]
+                    
+                    # Get paginated results
+                    cursor.execute('''
+                        SELECT * FROM texts 
+                        WHERE status = 'approved' AND category = %s
+                        ORDER BY id DESC
+                        LIMIT %s OFFSET %s
+                    ''', (category_query, results_per_page, offset))
+                else:
+                    # Get total count
+                    cursor.execute('''
+                        SELECT COUNT(*) FROM texts 
+                        WHERE status = 'approved' AND category = ?
+                    ''', (category_query,))
+                    total_results = cursor.fetchone()[0]
+                    
+                    # Get paginated results
+                    cursor.execute('''
+                        SELECT * FROM texts 
+                        WHERE status = 'approved' AND category = ?
+                        ORDER BY id DESC
+                        LIMIT ? OFFSET ?
+                    ''', (category_query, results_per_page, offset))
+            else:
+                # Regular text search
+                search_term = f"%{query}%"
+                
+                if is_postgres:
+                    # Get total count
+                    cursor.execute('''
+                        SELECT COUNT(*) FROM texts 
+                        WHERE status = 'approved' 
+                        AND (title ILIKE %s OR title_en ILIKE %s OR content ILIKE %s OR content_en ILIKE %s OR full_content ILIKE %s)
+                    ''', (search_term, search_term, search_term, search_term, search_term))
+                    total_results = cursor.fetchone()[0]
+                    
+                    # Get paginated results
+                    cursor.execute('''
+                        SELECT * FROM texts 
+                        WHERE status = 'approved' 
+                        AND (title ILIKE %s OR title_en ILIKE %s OR content ILIKE %s OR content_en ILIKE %s OR full_content ILIKE %s)
+                        ORDER BY id DESC
+                        LIMIT %s OFFSET %s
+                    ''', (search_term, search_term, search_term, search_term, search_term, results_per_page, offset))
+                else:
+                    # Get total count
+                    cursor.execute('''
+                        SELECT COUNT(*) FROM texts 
+                        WHERE status = 'approved' 
+                        AND (title LIKE ? OR title_en LIKE ? OR content LIKE ? OR content_en LIKE ? OR full_content LIKE ?)
+                    ''', (search_term, search_term, search_term, search_term, search_term))
+                    total_results = cursor.fetchone()[0]
+                    
+                    # Get paginated results
+                    cursor.execute('''
+                        SELECT * FROM texts 
+                        WHERE status = 'approved' 
+                        AND (title LIKE ? OR title_en LIKE ? OR content LIKE ? OR content_en LIKE ? OR full_content LIKE ?)
+                        ORDER BY id DESC
+                        LIMIT ? OFFSET ?
+                    ''', (search_term, search_term, search_term, search_term, search_term, results_per_page, offset))
+            
+            rows = cursor.fetchall()
+            
+            for row in rows:
+                if is_postgres:
+                    results.append({
+                        'id': row[0],
+                        'title': row[1],
+                        'title_en': row[2],
+                        'content': row[3],
+                        'category': row[7],
+                        'word_count': row[9],
+                        'unique_words': row[10]
+                    })
+                else:
+                    results.append({
+                        'id': row[0],
+                        'title': row[1],
+                        'title_en': row[2],
+                        'content': row[3],
+                        'category': row[7],
+                        'word_count': row[9],
+                        'unique_words': row[10]
+                    })
+            
+            # Count total occurrences of the search term in all texts (only for text search, not category search)
+            if not is_category_search:
+                total_occurrences = count_search_occurrences(query)
+            
+        finally:
+            cursor.close()
+            conn.close()
+    
+    total_pages = (total_results + results_per_page - 1) // results_per_page
+    
+    return render_template('search.html', 
+                         query=query, 
+                         results=results, 
+                         total_results=total_results, 
+                         total_occurrences=total_occurrences,
+                         user=user,
+                         page=page,
+                         total_pages=total_pages,
+                         is_category_search=is_category_search)
+
+@app.route('/statistics')
+@login_required
+def statistics():
+    """Statistics page"""
+    user = get_current_user()
+    
+    # Generate comprehensive statistics
+    stats = generate_statistics()
+    
+    return render_template('statistics.html', user=user, stats=stats, categories=CATEGORY_MAP)
+
+@app.route('/manager/dashboard')
+@manager_required
+def manager_dashboard():
+    """Manager dashboard"""
+    user = get_current_user()
+    pending_count = get_pending_count()
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        is_postgres = 'postgresql' in str(conn).lower()
+        
+        # Get recent pending texts (limit to 5 for dashboard)
+        if is_postgres:
+            cursor.execute('''
+                SELECT t.*, u.username 
+                FROM texts t 
+                LEFT JOIN users u ON t.user_id = u.id 
+                WHERE t.status = 'pending' 
+                ORDER BY t.date_added DESC 
+                LIMIT 5
+            ''')
+        else:
+            cursor.execute('''
+                SELECT t.*, u.username 
+                FROM texts t 
+                LEFT JOIN users u ON t.user_id = u.id 
+                WHERE t.status = 'pending' 
+                ORDER BY t.date_added DESC 
+                LIMIT 5
+            ''')
+        
+        pending_texts = cursor.fetchall()
+        
+        # Get overall stats
+        if is_postgres:
+            cursor.execute("SELECT COUNT(*) FROM texts WHERE status = 'approved'")
+        else:
+            cursor.execute("SELECT COUNT(*) FROM texts WHERE status = 'approved'")
+        approved_count = cursor.fetchone()[0]
+        
+        if is_postgres:
+            cursor.execute("SELECT COUNT(*) FROM texts WHERE status = 'rejected'")
+        else:
+            cursor.execute("SELECT COUNT(*) FROM texts WHERE status = 'rejected'")
+        rejected_count = cursor.fetchone()[0]
+        
+        stats = {
+            'approved': approved_count,
+            'pending': pending_count,
+            'rejected': rejected_count,
+            'total': approved_count + pending_count + rejected_count
+        }
+        
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return render_template('manager.html', user=user, pending_texts=pending_texts, stats=stats, pending_count=pending_count)
+
+@app.route('/manager/pending')
+@manager_required
+def manager_pending():
+    """Manager pending review page"""
+    user = get_current_user()
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        is_postgres = 'postgresql' in str(conn).lower()
+        
+        # Get all pending texts
+        if is_postgres:
+            cursor.execute('''
+                SELECT t.*, u.username 
+                FROM texts t 
+                LEFT JOIN users u ON t.user_id = u.id 
+                WHERE t.status = 'pending' 
+                ORDER BY t.date_added DESC
+            ''')
+        else:
+            cursor.execute('''
+                SELECT t.*, u.username 
+                FROM texts t 
+                LEFT JOIN users u ON t.user_id = u.id 
+                WHERE t.status = 'pending' 
+                ORDER BY t.date_added DESC
+            ''')
+        
+        pending_texts = cursor.fetchall()
+        
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return render_template('manager_pending.html', user=user, pending_texts=pending_texts, is_postgres=is_postgres)
+
+@app.route('/manager/approve/<int:text_id>')
+@manager_required
+def manager_approve(text_id):
+    """Approve a pending text"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        is_postgres = 'postgresql' in str(conn).lower()
+        
+        if is_postgres:
+            cursor.execute("UPDATE texts SET status = 'approved' WHERE id = %s", (text_id,))
+        else:
+            cursor.execute("UPDATE texts SET status = 'approved' WHERE id = ?", (text_id,))
+        
+        conn.commit()
+        flash('Text approved successfully!', 'success')
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return redirect(url_for('manager_pending'))
+
+@app.route('/manager/reject/<int:text_id>')
+@manager_required
+def manager_reject(text_id):
+    """Reject a pending text"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        is_postgres = 'postgresql' in str(conn).lower()
+        
+        if is_postgres:
+            cursor.execute("UPDATE texts SET status = 'rejected' WHERE id = %s", (text_id,))
+        else:
+            cursor.execute("UPDATE texts SET status = 'rejected' WHERE id = ?", (text_id,))
+        
+        conn.commit()
+        flash('Text rejected.', 'info')
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return redirect(url_for('manager_pending'))
+
+@app.route('/text/<int:text_id>')
+@login_required
+def detail(text_id):
+    """View text detail"""
+    user = get_current_user()
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        is_postgres = 'postgresql' in str(conn).lower()
+        
+        if is_postgres:
+            cursor.execute('''
+                SELECT t.*, u.username 
+                FROM texts t 
+                LEFT JOIN users u ON t.user_id = u.id 
+                WHERE t.id = %s
+            ''', (text_id,))
+        else:
+            cursor.execute('''
+                SELECT t.*, u.username 
+                FROM texts t 
+                LEFT JOIN users u ON t.user_id = u.id 
+                WHERE t.id = ?
+            ''', (text_id,))
+        
+        row = cursor.fetchone()
+        
+        if not row:
+            flash('Text not found.', 'error')
+            return redirect(url_for('search'))
+        
+        # Convert to dictionary based on database type
+        if is_postgres:
+            text_data = {
+                'id': row[0],
+                'title': row[1],
+                'title_en': row[2],
+                'content': row[3],
+                'content_en': row[4],
+                'full_content': row[5],
+                'full_content_en': row[6],
+                'category': row[7],
+                'date_added': row[8].strftime('%Y-%m-%d %H:%M:%S') if row[8] else 'Unknown',
+                'word_count': row[9],
+                'unique_words': row[10],
+                'source': row[11],
+                'user_id': row[12],
+                'status': row[13],
+                'username': row[14] if len(row) > 14 and row[14] else 'Unknown'
+            }
+        else:
+            text_data = {
+                'id': row['id'],
+                'title': row['title'],
+                'title_en': row['title_en'],
+                'content': row['content'],
+                'content_en': row['content_en'],
+                'full_content': row['full_content'],
+                'full_content_en': row['full_content_en'],
+                'category': row['category'],
+                'date_added': row['date_added'],
+                'word_count': row['word_count'],
+                'unique_words': row['unique_words'],
+                'source': row['source'],
+                'user_id': row['user_id'],
+                'status': row['status'],
+                'username': row['username'] if row['username'] else 'Unknown'
+            }
+        
+    except Exception as e:
+        print(f"Error fetching text detail: {e}")
+        flash('Error loading text details.', 'error')
+        return redirect(url_for('search'))
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return render_template('detail.html', user=user, text=text_data, categories=CATEGORY_MAP)
+
+@app.route('/logout')
+@login_required
+def logout():
+    session.clear()
+    flash('You have been logged out successfully.', 'success')
+    return redirect(url_for('login'))
+
+# Error handlers
 @app.errorhandler(404)
-def not_found(error):
-    return render_template('error.html', error_message='Page not found'), 404
+def not_found_error(error):
+    return render_template('error.html', error='Page not found'), 404
 
 @app.errorhandler(500)
 def internal_error(error):
-    return render_template('error.html', error_message='Internal server error'), 500
+    return render_template('error.html', error='Internal server error'), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('DEBUG', 'False').lower() == 'true'
-    app.run(host='0.0.0.0', port=port, debug=debug)
+    app.run(host='0.0.0.0', port=port, debug=True)

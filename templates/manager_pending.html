@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pending Contributions - IsiZulu Corpus</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #007749;
+            --accent-color: #FFB81C;
+            --text-light: #ecf0f1;
+        }
+        
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: url("/static/bg1.jpg") no-repeat center center fixed;
+            background-size: cover;
+            color: var(--text-light);
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        .overlay {
+            position: fixed; top:0; left:0; right:0; bottom:0;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 0;
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            width: 92%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+        
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            padding: 10px 20px;
+            border: 1px solid var(--accent-color);
+            border-radius: 25px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link:hover {
+            background-color: var(--accent-color);
+            color: black;
+        }
+        
+        .pending-item {
+            background: rgba(0, 119, 73, 0.2);
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border: 1px solid var(--accent-color);
+        }
+        
+        .pending-actions {
+            margin-top: 15px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .btn-info { background: #3498db; color: white; }
+        .btn-success { background: #27ae60; color: white; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-primary { background: var(--accent-color); color: black; }
+        
+        .alert {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid;
+        }
+        
+        .alert-success {
+            background: rgba(39, 174, 96, 0.3);
+            border-color: #27ae60;
+            color: #2ecc71;
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay"></div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="logo">Pending Contributions</div>
+            <p>Review and manage user submissions</p>
+        </div>
+        
+        <div class="nav-links">
+            <a href="{{ url_for('home') }}" class="nav-link">Home</a>
+            <a href="{{ url_for('manager_dashboard') }}" class="nav-link">Dashboard</a>
+            <a href="{{ url_for('logout') }}" class="nav-link">Logout ({{ user.username }})</a>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-success">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if pending_texts %}
+        <div class="pending-list">
+            {% for text in pending_texts %}
+            <div class="pending-item">
+                <div class="pending-header">
+                    <h3>{{ text.title }}</h3>
+                    <span style="background: var(--accent-color); color: black; padding: 5px 10px; border-radius: 15px; font-size: 0.8rem;">
+                        {{ text.category }}
+                    </span>
+                </div>
+                
+                <div class="pending-content">
+                    <p><strong>English Title:</strong> {{ text.title_en }}</p>
+                    <p><strong>Content Preview:</strong> {{ text.content[:200] }}{% if text.content|length > 200 %}...{% endif %}</p>
+                    <p><strong>Submitted by:</strong> {{ text.username }}</p>
+                    <p><strong>Submitted on:</strong> {{ text.date_added }}</p>
+                    {% if text.source %}
+                    <p><strong>Source:</strong> {{ text.source }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="pending-actions">
+                    <a href="{{ url_for('detail', text_id=text.id) }}" class="btn btn-info">View Full Content</a>
+                    <a href="{{ url_for('manager_approve', text_id=text.id) }}" class="btn btn-success" 
+                       onclick="return confirm('Approve this contribution?')">Approve</a>
+                    <a href="{{ url_for('manager_reject', text_id=text.id) }}" class="btn btn-danger" 
+                       onclick="return confirm('Reject this contribution?')">Reject</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 40px;">
+            <p>No pending contributions at the moment.</p>
+            <a href="{{ url_for('manager_dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function confirmAction(action) {
+            return confirm(`Are you sure you want to ${action} this contribution?`);
+        }
+    </script>
+</body>
+</html>
