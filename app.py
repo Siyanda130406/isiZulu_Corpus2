@@ -1,4 +1,4 @@
-# app.py - SUPPORTS BOTH SQLite & PostgreSQL
+
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -7,7 +7,6 @@ from datetime import datetime
 import re
 from collections import Counter
 
-# Try to import both database systems
 try:
     import psycopg2
     from psycopg2.extras import RealDictCursor
@@ -26,7 +25,7 @@ except ImportError:
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 
-# Category mapping
+
 CATEGORY_MAP = {
     'izaga': {'en': 'proverbs', 'zu': 'izaga'},
     'izibongo': {'en': 'praise poetry', 'zu': 'izibongo'},
@@ -41,10 +40,10 @@ def get_db_connection():
     """Get database connection - PostgreSQL for production, SQLite for local dev"""
     database_url = os.environ.get('DATABASE_URL')
     
-    # Use PostgreSQL if DATABASE_URL is available (for production)
+ 
     if database_url and POSTGRES_AVAILABLE:
         try:
-            # Parse the database URL for PostgreSQL
+       
             conn = psycopg2.connect(database_url, sslmode='require')
             print("✅ Connected to PostgreSQL database")
             return conn
@@ -52,7 +51,7 @@ def get_db_connection():
             print(f"❌ PostgreSQL connection failed: {e}")
             print("🔄 Falling back to SQLite...")
     
-    # Fallback to SQLite for local development
+
     if SQLITE_AVAILABLE:
         try:
             os.makedirs('data', exist_ok=True)
@@ -73,11 +72,11 @@ def execute_query(query, params=()):
     try:
         cursor.execute(query, params)
         
-        # For SELECT queries, fetch results
+
         if query.strip().upper().startswith('SELECT'):
             result = cursor.fetchall()
         else:
-            # For INSERT/UPDATE/DELETE, commit and return rowcount
+         
             conn.commit()
             result = cursor.rowcount
         
@@ -97,13 +96,13 @@ def init_database():
     try:
         conn = get_db_connection()
         
-        # Check if we're using PostgreSQL or SQLite
+ 
         is_postgres = 'postgresql' in str(conn).lower() if conn else False
         print(f"📊 Database type: {'PostgreSQL' if is_postgres else 'SQLite'}")
         
         cursor = conn.cursor()
         
-        # Create users table
+   
         if is_postgres:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS users (
@@ -135,7 +134,7 @@ def init_database():
                 )
             ''')
         else:
-            # SQLite schema
+        
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -166,7 +165,7 @@ def init_database():
                 )
             ''')
         
-        # Check if users table is empty
+   
         if is_postgres:
             cursor.execute("SELECT COUNT(*) FROM users")
         else:
@@ -193,7 +192,7 @@ def init_database():
                         (username, email, password_hash, role)
                     )
         
-        # Check if texts table is empty
+     
         if is_postgres:
             cursor.execute("SELECT COUNT(*) FROM texts")
         else:
@@ -203,7 +202,7 @@ def init_database():
         if text_count == 0:
             print("📝 Adding comprehensive sample texts...")
             
-            # COMPREHENSIVE SAMPLE TEXTS
+    
             sample_texts = [
                 ("Indlela ibuzwa kwabaphambili", "A path is asked from those who have walked it before",
                  "Isaga elikhuthaza ukulalela abanolwazi.", "A proverb that encourages listening to those with knowledge.",
@@ -249,8 +248,7 @@ def init_database():
                     ''', text)
         
         conn.commit()
-        
-        # Verify the data
+   
         if is_postgres:
             cursor.execute("SELECT COUNT(*) as count, status FROM texts GROUP BY status")
         else:
@@ -274,10 +272,9 @@ def init_database():
             cursor.close()
             conn.close()
 
-# Initialize database when app starts
 init_database()
 
-# Authentication decorators
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -305,7 +302,7 @@ def get_current_user():
         cursor = conn.cursor()
         
         try:
-            # Check database type
+        
             is_postgres = 'postgresql' in str(conn).lower()
             
             if is_postgres:
@@ -349,7 +346,7 @@ def extract_words(text):
     if not text:
         return []
     words = re.findall(r'\b[a-zA-Z]+\b', text.lower())
-    return [word for word in words if len(word) > 2]  # Filter out very short words
+    return [word for word in words if len(word) > 2]  
 
 def generate_statistics():
     """Generate comprehensive statistics for the corpus"""
@@ -359,15 +356,14 @@ def generate_statistics():
     try:
         is_postgres = 'postgresql' in str(conn).lower()
         
-        # Get all approved texts
+    
         if is_postgres:
             cursor.execute("SELECT * FROM texts WHERE status = 'approved'")
         else:
             cursor.execute("SELECT * FROM texts WHERE status = 'approved'")
         
         texts = cursor.fetchall()
-        
-        # Basic stats
+
         total_texts = len(texts)
         total_words = 0
         total_unique_words = 0
@@ -376,24 +372,24 @@ def generate_statistics():
         
         for text in texts:
             if is_postgres:
-                total_words += text[9] or 0  # word_count
-                total_unique_words += text[10] or 0  # unique_words
-                all_zu_text += f" {text[1]} {text[3]} {text[5] or ''}"  # title, content, full_content
-                all_en_text += f" {text[2]} {text[4]} {text[6] or ''}"  # title_en, content_en, full_content_en
+                total_words += text[9] or 0 
+                total_unique_words += text[10] or 0 
+                all_zu_text += f" {text[1]} {text[3]} {text[5] or ''}"  
+                all_en_text += f" {text[2]} {text[4]} {text[6] or ''}"  
             else:
                 total_words += text['word_count'] or 0
                 total_unique_words += text['unique_words'] or 0
                 all_zu_text += f" {text['title']} {text['content']} {text['full_content'] or ''}"
                 all_en_text += f" {text['title_en']} {text['content_en']} {text['full_content_en'] or ''}"
         
-        # Word frequency analysis
+
         zu_words = extract_words(all_zu_text)
         en_words = extract_words(all_en_text)
         
         zu_word_freq = Counter(zu_words).most_common(20)
         en_word_freq = Counter(en_words).most_common(20)
         
-        # Word pairs (bigrams)
+
         zu_word_pairs = []
         en_word_pairs = []
         
@@ -407,7 +403,7 @@ def generate_statistics():
             en_word_pairs = Counter(en_bigrams).most_common(10)
             en_word_pairs = [{'word1': pair[0][0], 'word2': pair[0][1], 'frequency': pair[1]} for pair in en_word_pairs]
         
-        # Category distribution
+
         if is_postgres:
             cursor.execute("SELECT category, COUNT(*) FROM texts WHERE status = 'approved' GROUP BY category")
         else:
@@ -443,7 +439,7 @@ def count_search_occurrences(query):
     try:
         is_postgres = 'postgresql' in str(conn).lower()
         
-        # Get all approved texts content
+
         if is_postgres:
             cursor.execute("SELECT title, title_en, content, content_en, full_content, full_content_en FROM texts WHERE status = 'approved'")
         else:
@@ -454,12 +450,12 @@ def count_search_occurrences(query):
         
         for text in texts:
             if is_postgres:
-                # Combine all text fields
+           
                 combined_text = f"{text[0]} {text[1]} {text[2]} {text[3]} {text[4] or ''} {text[5] or ''}".lower()
             else:
                 combined_text = f"{text['title']} {text['title_en']} {text['content']} {text['content_en']} {text['full_content'] or ''} {text['full_content_en'] or ''}".lower()
             
-            # Count occurrences of the search term
+       
             total_occurrences += combined_text.count(query.lower())
         
         return total_occurrences
@@ -468,7 +464,7 @@ def count_search_occurrences(query):
         cursor.close()
         conn.close()
 
-# Routes
+
 @app.route('/')
 def root_redirect():
     return redirect(url_for('login'))
@@ -480,28 +476,28 @@ def home():
     user = get_current_user()
     pending_count = get_pending_count()
     
-    # Get some stats for the dashboard
+
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
         is_postgres = 'postgresql' in str(conn).lower()
         
-        # Get total approved texts
+  
         if is_postgres:
             cursor.execute("SELECT COUNT(*) FROM texts WHERE status = 'approved'")
         else:
             cursor.execute("SELECT COUNT(*) FROM texts WHERE status = 'approved'")
         total_texts = cursor.fetchone()[0]
         
-        # Get texts by category
+ 
         if is_postgres:
             cursor.execute("SELECT category, COUNT(*) FROM texts WHERE status = 'approved' GROUP BY category")
         else:
             cursor.execute("SELECT category, COUNT(*) FROM texts WHERE status = 'approved' GROUP BY category")
         category_stats = cursor.fetchall()
         
-        # Get recent texts
+  
         if is_postgres:
             cursor.execute("SELECT title, title_en, category, date_added FROM texts WHERE status = 'approved' ORDER BY date_added DESC LIMIT 5")
         else:
@@ -576,7 +572,7 @@ def register():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Check if username or email already exists
+ 
         is_postgres = 'postgresql' in str(conn).lower()
         
         if is_postgres:
@@ -589,7 +585,7 @@ def register():
             conn.close()
             return render_template('register.html')
         
-        # Create new user (always as regular user role)
+
         hashed_password = generate_password_hash(password)
         
         if is_postgres:
@@ -636,13 +632,13 @@ def contribute():
         try:
             is_postgres = 'postgresql' in str(conn).lower()
             
-            # Calculate word counts
+     
             all_text = f"{content} {full_content}"
             words = all_text.split()
             word_count = len(words)
             unique_words = len(set(words))
             
-            # Insert with pending status
+        
             if is_postgres:
                 cursor.execute('''
                     INSERT INTO texts (title, title_en, content, content_en, full_content, full_content_en, category, source, user_id, word_count, unique_words, status)
@@ -682,8 +678,7 @@ def search():
         
         try:
             is_postgres = 'postgresql' in str(conn).lower()
-            
-            # Check if query is a category
+          
             category_query = None
             for category_id, category_info in CATEGORY_MAP.items():
                 if query.lower() in [category_id, category_info['en'].lower(), category_info['zu'].lower()]:
@@ -694,16 +689,16 @@ def search():
             offset = (page - 1) * results_per_page
             
             if category_query:
-                # Search by category
+            
                 if is_postgres:
-                    # Get total count
+               
                     cursor.execute('''
                         SELECT COUNT(*) FROM texts 
                         WHERE status = 'approved' AND category = %s
                     ''', (category_query,))
                     total_results = cursor.fetchone()[0]
                     
-                    # Get paginated results
+             
                     cursor.execute('''
                         SELECT * FROM texts 
                         WHERE status = 'approved' AND category = %s
@@ -711,14 +706,14 @@ def search():
                         LIMIT %s OFFSET %s
                     ''', (category_query, results_per_page, offset))
                 else:
-                    # Get total count
+               
                     cursor.execute('''
                         SELECT COUNT(*) FROM texts 
                         WHERE status = 'approved' AND category = ?
                     ''', (category_query,))
                     total_results = cursor.fetchone()[0]
                     
-                    # Get paginated results
+               
                     cursor.execute('''
                         SELECT * FROM texts 
                         WHERE status = 'approved' AND category = ?
@@ -726,11 +721,11 @@ def search():
                         LIMIT ? OFFSET ?
                     ''', (category_query, results_per_page, offset))
             else:
-                # Regular text search
+           
                 search_term = f"%{query}%"
                 
                 if is_postgres:
-                    # Get total count
+              
                     cursor.execute('''
                         SELECT COUNT(*) FROM texts 
                         WHERE status = 'approved' 
@@ -738,7 +733,7 @@ def search():
                     ''', (search_term, search_term, search_term, search_term, search_term))
                     total_results = cursor.fetchone()[0]
                     
-                    # Get paginated results
+       
                     cursor.execute('''
                         SELECT * FROM texts 
                         WHERE status = 'approved' 
@@ -747,7 +742,7 @@ def search():
                         LIMIT %s OFFSET %s
                     ''', (search_term, search_term, search_term, search_term, search_term, results_per_page, offset))
                 else:
-                    # Get total count
+                
                     cursor.execute('''
                         SELECT COUNT(*) FROM texts 
                         WHERE status = 'approved' 
@@ -755,7 +750,7 @@ def search():
                     ''', (search_term, search_term, search_term, search_term, search_term))
                     total_results = cursor.fetchone()[0]
                     
-                    # Get paginated results
+               
                     cursor.execute('''
                         SELECT * FROM texts 
                         WHERE status = 'approved' 
@@ -788,7 +783,7 @@ def search():
                         'unique_words': row[10]
                     })
             
-            # Count total occurrences of the search term in all texts (only for text search, not category search)
+
             if not is_category_search:
                 total_occurrences = count_search_occurrences(query)
             
@@ -814,7 +809,7 @@ def statistics():
     """Statistics page"""
     user = get_current_user()
     
-    # Generate comprehensive statistics
+
     stats = generate_statistics()
     
     return render_template('statistics.html', user=user, stats=stats, categories=CATEGORY_MAP)
@@ -832,7 +827,7 @@ def manager_dashboard():
     try:
         is_postgres = 'postgresql' in str(conn).lower()
         
-        # Get recent pending texts (limit to 5 for dashboard)
+
         if is_postgres:
             cursor.execute('''
                 SELECT t.*, u.username 
@@ -854,7 +849,7 @@ def manager_dashboard():
         
         pending_texts = cursor.fetchall()
         
-        # Get overall stats
+
         if is_postgres:
             cursor.execute("SELECT COUNT(*) FROM texts WHERE status = 'approved'")
         else:
@@ -892,7 +887,7 @@ def manager_pending():
     try:
         is_postgres = 'postgresql' in str(conn).lower()
         
-        # Get all pending texts
+
         if is_postgres:
             cursor.execute('''
                 SELECT t.*, u.username 
@@ -997,7 +992,7 @@ def detail(text_id):
             flash('Text not found.', 'error')
             return redirect(url_for('search'))
         
-        # Convert to dictionary based on database type
+     
         if is_postgres:
             text_data = {
                 'id': row[0],
@@ -1052,7 +1047,7 @@ def logout():
     flash('You have been logged out successfully.', 'success')
     return redirect(url_for('login'))
 
-# Error handlers
+
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('error.html', error='Page not found'), 404
